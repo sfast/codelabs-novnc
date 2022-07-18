@@ -10,6 +10,7 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
+import {decodeQOI} from "./qoidecode.js";
 
 export default class TightDecoder {
     constructor() {
@@ -62,6 +63,9 @@ export default class TightDecoder {
         } else if (this._ctl === 0x0B) {
             ret = this._webpRect(x, y, width, height,
                                 sock, display, depth);
+        } else if (this._ctl === 0x0C) {
+            ret = this._qoiRect(x, y, width, height,
+                                sock, display, depth);
         } else {
             throw new Error("Illegal tight compression received (ctl: " +
                                    this._ctl + ")");
@@ -107,6 +111,19 @@ export default class TightDecoder {
         }
 
         display.imageRect(x, y, width, height, "image/webp", data);
+
+        return true;
+    }
+
+    _qoiRect(x, y, width, height, sock, display, depth) {
+        let data = this._readData(sock);
+        if (data === null) {
+            return false;
+        }
+
+        let decoded = decodeQOI(data, 0, data.length, 4);
+
+        display.blitImage(x, y, width, height, decoded.data, 0, false);
 
         return true;
     }

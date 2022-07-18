@@ -2373,6 +2373,8 @@ export default class RFB extends EventTargetMixin {
         encs.push(encodings.pseudoEncodingExtendedClipboard);
         if (this._hasWebp())
             encs.push(encodings.pseudoEncodingWEBP);
+        if (0) // TODO option
+            encs.push(encodings.pseudoEncodingQOI);
 
         // kasm settings; the server may be configured to ignore these
         encs.push(encodings.pseudoEncodingJpegVideoQualityLevel0 + this.jpegVideoQuality);

@@ -129,7 +129,7 @@ export function decodeQOI (arrayBuffer, byteOffset, byteLength, outputChannels) 
             result[pixelPosition] = red;
             result[pixelPosition + 1] = green;
             result[pixelPosition + 2] = blue;
-            result[pixelPosition + 3] = alpha;
+            result[pixelPosition + 3] = 255; // hardcoded full alpha //alpha;
         } else { // RGB
             result[pixelPosition] = red;
             result[pixelPosition + 1] = green;

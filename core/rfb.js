@@ -41,6 +41,7 @@ const DEFAULT_BACKGROUND = 'rgb(40, 40, 40)';
 
 var _videoQuality =  2;
 var _enableWebP = false;
+var _enableQOI = false;
 
 // Minimum wait (ms) between two mouse moves
 const MOUSE_MOVE_DELAY = 17; 
@@ -136,6 +137,7 @@ export default class RFB extends EventTargetMixin {
         this._maxVideoResolutionX = 960;
         this._maxVideoResolutionY = 540;
         this._clipboardBinary = true;
+        this._enableQOI = false;
 
         this._trackFrameStats = false;
 
@@ -464,6 +466,16 @@ export default class RFB extends EventTargetMixin {
         this._pendingApplyEncodingChanges = true;
     }
 
+    get enableQOI() { return this._enableQOI; }
+    set enableQOI(enabled) {
+        if(this._enableQOI === enabled) {
+            return;
+        }
+
+        this._enableQOI = enabled;
+        this._pendingApplyEncodingChanges = true;
+    }
+
     get antiAliasing() { return this._display.antiAliasing; }
     set antiAliasing(value) {
        this._display.antiAliasing = value;
@@ -711,6 +723,7 @@ export default class RFB extends EventTargetMixin {
                 this._requestRemoteResize();
             }
 
+            console.log("check send encodings");
             if (this._pendingApplyEncodingChanges) {
                 this._sendEncodings();
             }
@@ -2317,6 +2330,10 @@ export default class RFB extends EventTargetMixin {
         return true;
     }
 
+    _hasQOI() {
+        return this.enableQOI;
+    }
+
     _hasWebp() {
         /*
         return new Promise(res => {
@@ -2327,7 +2344,7 @@ export default class RFB extends EventTargetMixin {
             };
         })
         */
-        if (!this.enableWebP)
+            if (!this.enableWebP)
             return false;
         // It's not possible to check for webp synchronously, and hacking promises
         // into everything would be too time-consuming. So test for FF and Chrome.
@@ -2373,7 +2390,9 @@ export default class RFB extends EventTargetMixin {
         encs.push(encodings.pseudoEncodingExtendedClipboard);
         if (this._hasWebp())
             encs.push(encodings.pseudoEncodingWEBP);
-        if (0) // TODO option
+
+        console.log(this._hasQOI());
+        if (this._hasQOI())
             encs.push(encodings.pseudoEncodingQOI);
 
         // kasm settings; the server may be configured to ignore these

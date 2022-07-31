@@ -245,7 +245,8 @@ const UI = {
         UI.initSetting('toggle_control_panel', false);
         UI.initSetting('enable_perf_stats', false);
         UI.initSetting('virtual_keyboard_visible', false);
-        UI.initSetting('enable_ime', false)
+        UI.initSetting('enable_ime', false);
+        UI.initSetting('enable_qoi', false);
         UI.toggleKeyboardControls();
 
         if (WebUtil.isInsideKasmVDI()) {
@@ -542,6 +543,8 @@ const UI = {
         UI.addSettingChangeHandler('virtual_keyboard_visible', UI.toggleKeyboardControls);
         UI.addSettingChangeHandler('enable_ime');
         UI.addSettingChangeHandler('enable_ime', UI.toggleIMEMode);
+        UI.addSettingChangeHandler('enable_qoi');
+        UI.addSettingChangeHandler('enable_qoi', UI.toggleQOI);
     },
 
     addFullscreenHandlers() {
@@ -1411,6 +1414,7 @@ const UI = {
         UI.rfb.clipboardSeamless = UI.getSetting('clipboard_seamless');
         UI.rfb.keyboard.enableIME = UI.getSetting('enable_ime');
         UI.rfb.clipboardBinary = supportsBinaryClipboard() && UI.rfb.clipboardSeamless;
+        UI.rfb.enableQOI = UI.getSetting('enable_qoi');
 
         //Only explicitly request permission to clipboard on browsers that support binary clipboard access
         if (supportsBinaryClipboard()) {
@@ -1660,6 +1664,21 @@ const UI = {
                         UI.forceSetting('enable_ime', false, false);
                         UI.toggleIMEMode();
                     }
+                    break;
+
+                case 'disable_qoi':
+                    if(UI.getSetting('enable_qoi')) {
+                        UI.forceSetting('enable_qoi', false, false);
+                    }
+                    UI.toggleQOI();
+                    UI.updateQuality();
+                    break;
+                case 'enable_qoi':
+                    if(!UI.getSetting('enable_qoi')) {
+                        UI.forceSetting('enable_qoi', true, false);
+                    }
+                    UI.toggleQOI();
+                    UI.updateQuality();
                     break;
             }
         }
@@ -2039,6 +2058,7 @@ const UI = {
             UI.rfb.frameRate = parseInt(UI.getSetting('framerate'));
             UI.rfb.enableWebP = UI.getSetting('enable_webp');
             UI.rfb.videoQuality = parseInt(UI.getSetting('video_quality'));
+            UI.rfb.enableQOI = UI.getSetting('enable_qoi');
 
             // Gracefully update settings server side
             UI.rfb.updateConnectionSettings();
@@ -2085,6 +2105,18 @@ const UI = {
                 UI.rfb.keyboard.enableIME = false;
             }
         }
+    },
+
+    toggleQOI() {
+      if(UI.rfb) {
+          if(UI.getSetting('enable_qoi')) {
+              UI.rfb.enableQOI = true;
+          } else {
+              UI.rfb.enableQOI = false;
+          }
+
+          UI.showStatus("Refresh or reconnect to apply changes.");
+      }
     },
 
     showKeyboardControls() {

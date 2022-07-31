@@ -140,6 +140,7 @@ export default class RFB extends EventTargetMixin {
         this._clipboardBinary = true;
         this._enableQOI = false;
         this._useUdp = true;
+        this._enableQOI = false;
 
         this._trackFrameStats = false;
 
@@ -1552,7 +1553,7 @@ export default class RFB extends EventTargetMixin {
             if (down && !this._viewportDragging) {
                 this._viewportDragging = true;
                 this._viewportDragPos = {'x': x, 'y': y};
-                this._viewportHasMoved = false;
+		this._viewportHasMoved = false;
 
                 // Skip sending mouse events
                 return;

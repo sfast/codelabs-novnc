@@ -10,7 +10,17 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
-import {decodeQOI} from "./qoidecode.js";
+
+const qoiErrors = {
+    SUCCESS: 0,
+    QOI_INCOMPLETE_IMAGE: 1,
+    QOI_OUTPUT_CHANNELS_INVALID: 2,
+    QOI_COLORSPACE_INVALID: 3,
+    QOI_INVALID_CHANNELS: 4,
+    QOI_INVALID_SIGNATURE: 5,
+    QOI_PIXEL_LENGTH_INVALID: 6,
+};
+
 
 export default class TightDecoder {
     constructor() {
@@ -24,6 +34,16 @@ export default class TightDecoder {
         for (let i = 0; i < 4; i++) {
             this._zlibs[i] = new Inflator();
         }
+
+        fetch("/core/decoders/qoi.wasm")
+            .then(bytes => bytes.arrayBuffer())
+            .then(mod => WebAssembly.compile(mod))
+            .then(module => {
+                return new WebAssembly.Instance(module)
+            })
+            .then(instance => {
+                this._instance = instance;
+            });
     }
 
     decodeRect(x, y, width, height, sock, display, depth) {
@@ -121,9 +141,50 @@ export default class TightDecoder {
             return false;
         }
 
-        let decoded = decodeQOI(data, 0, data.length, 4);
+        let pixelLength = width * height * 4;
+        let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
+        importData.set(data);
 
-        display.blitImage(x, y, width, height, decoded.data, 0, false);
+        let resultData = new Uint8Array(this._instance.exports.memory.buffer,
+                                       importData.byteOffset + importData.length,
+                                        pixelLength);
+        let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
+            4, resultData);
+
+        if(result == 0) {
+            display.blitImage(
+                x,
+                y,
+                width,
+                height,
+                resultData,
+                0,
+                false);
+        } else {
+            switch (result) {
+                case qoiErrors.QOI_INCOMPLETE_IMAGE: {
+                    Log.Info('QOI.decode: Incomplete image');
+                    break;
+                } case qoiErrors.QOI_OUTPUT_CHANNELS_INVALID: {
+                    Log.Info("QOI.decode: The number of channels for the output is invalid");
+                    break;
+                } case qoiErrors.QOI_COLORSPACE_INVALID: {
+                    Log.Info("QOI.decode: The colorspace declared in the file is invalid");
+                    break;
+                } case qoiErrors.QOI_INVALID_CHANNELS: {
+                    Log.Info("QOI.decode: The number of channels declared in the file is invalid");
+                    break;
+                } case qoiErrors.QOI_INVALID_SIGNATURE: {
+                    Log.Info("QOI.decode: The signature of the QOI file is invalid");
+                    break;
+                } case qoiErrors.QOI_PIXEL_LENGTH_INVALID: {
+                    Log.Info("QOI.decode: The pixel length is ZERO");
+                    break;
+                }
+
+                return false;
+            }
+        }
 
         return true;
     }

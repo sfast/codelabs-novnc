@@ -976,6 +976,9 @@ export default class RFB extends EventTargetMixin {
         this._canvas.addEventListener("gesturemove", this._eventHandlers.handleGesture);
         this._canvas.addEventListener("gestureend", this._eventHandlers.handleGesture);
 
+        // Visibility change
+        this._canvas.addEventListener("visibilitychange", this._eventHandlers.handleVisibilityChange);
+
         // WebRTC UDP datachannel inits
         {
             this._udpBuffer = new Map();
@@ -1883,6 +1886,14 @@ export default class RFB extends EventTargetMixin {
                         break;
                 }
                 break;
+        }
+    }
+
+    // visibility change
+    _handleVisibilityChange() {
+        if(document.visibilityState !== 'visible') {
+            // send a message on repeat
+            RFB.messages.clientUdpHeartbeat(this._sock);
         }
     }
 
@@ -3970,6 +3981,15 @@ RFB.messages = {
         buff[offset + 19] = 0;   // padding
 
         sock._sQlen += 20;
+        sock.flush();
+    },
+
+    clientUdpHeartbeat(sock) {
+        const buff = sock._sQ;
+        const offset = sock._sQlen;
+
+        buff[offset] = 182; // msg-type
+        sock._sQlen = 1;
         sock.flush();
     },
 

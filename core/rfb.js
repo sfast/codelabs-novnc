@@ -797,6 +797,27 @@ export default class RFB extends EventTargetMixin {
         this._keyboard.blur();
     }
 
+    checkLocalClipboard() {
+        if (this.clipboardUp && this.clipboardSeamless) {
+
+            if (this.clipboardBinary) {
+                navigator.clipboard.read().then((data) => {
+                    this.clipboardPasteDataFrom(data);
+                }, (err) => {
+                    Log.Debug("No data in clipboard: " + err);
+                }); 
+            } else {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(function (text) {
+                        this.clipboardPasteFrom(text);
+                    }.bind(this)).catch(function () {
+                      return Log.Debug("Failed to read system clipboard");
+                    });
+                }
+            }
+        }
+    }
+
     clipboardPasteFrom(text) {
         if (this._rfbConnectionState !== 'connected' || this._viewOnly) { return; }
         if (!(typeof text === 'string' && text.length > 0)) { return; }
@@ -1421,6 +1442,7 @@ export default class RFB extends EventTargetMixin {
 
                 this._handleMouseButton(pos.x, pos.y,
                                         true, 1 << ev.button);
+                this.checkLocalClipboard();
                 break;
             case 'mouseup':
                 this._handleMouseButton(pos.x, pos.y,
@@ -2467,7 +2489,8 @@ export default class RFB extends EventTargetMixin {
             this.dispatchEvent(new CustomEvent(
                 "clipboard",
                 { detail: { text: text } }));
-
+            
+            this._clipHash = 0;
         } else {
             //Extended msg.
             length = Math.abs(length);

@@ -1245,16 +1245,6 @@ const UI = {
         }
     },
 
-    readClipboard: function readClipboard(callback) {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-          navigator.clipboard.readText().then(function (text) {
-            return callback(text);
-          }).catch(function () {
-            return Log.Debug("Failed to read system clipboard");
-          });
-        }
-      },
-
     clipboardReceive(e) {
         if (UI.rfb.clipboardDown) {
            var curvalue = document.getElementById('noVNC_clipboard_text').value;
@@ -1286,26 +1276,6 @@ const UI = {
         }
     // Quick popup to give feedback that selection was copied
     setTimeout(UI.showOverlay.bind(this, msg, secs), 200);
-    },
-
-    copyFromLocalClipboard: function copyFromLocalClipboard() {
-        if (!document.hasFocus()) {
-            Log.Debug("window does not have focus");
-            return;
-        }
-        if (UI.rfb && UI.rfb.clipboardUp && UI.rfb.clipboardSeamless) {
-
-            if (UI.rfb.clipboardBinary) {
-                navigator.clipboard.read().then((data) => {
-                    if (UI.rfb) {
-                        UI.rfb.clipboardPasteDataFrom(data);
-                    }
-                    UI.needToCheckClipboardChange = false;
-                }, (err) => {
-                    Log.Debug("No data in clipboard");
-                }); 
-            }
-        }
     },
 
     clipboardClear() {

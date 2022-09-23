@@ -1643,6 +1643,13 @@ const UI = {
                         UI.toggleWebRTC();
                     }
                     break;
+
+                case 'set_idle_timeout':
+                    const allowedTimeoutIterations = Math.ceil(event.data.value / 30000);
+                    UI.forceSetting('idle_disconnect', allowedTimeoutIterations, allowedTimeoutIterations);
+                    UI.rfb.idleDisconnect = allowedTimeoutIterations;
+                    console.log(`Updated the idle timeout to ${event.data.value}s`);
+                    break;
             }
         }
     },

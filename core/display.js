@@ -425,7 +425,7 @@ export default class Display {
             newArr.set(new Uint8Array(arr.buffer, 0, newArr.length));
             this._renderQPush({
                 'type': 'blit',
-                'data': arr,
+                'data': newArr,
                 'x': x,
                 'y': y,
                 'width': width,

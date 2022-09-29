@@ -10,6 +10,40 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
+var worker = new Worker("decoder.js", { type: "module" });
+var worker1 = new Worker("decoder.js", { type: "module" });
+var workerEnabled = false;
+var displayGlobal;
+var decoded = true;
+var decoded1 = true;
+worker.onmessage = (evt) => {
+    decoded = true;
+    workerEnabled = true;
+    if(evt.data.result == 0) {
+        displayGlobal.blitQoi(
+            evt.data.x,
+            evt.data.y,
+            evt.data.width,
+            evt.data.height,
+            evt.data.resultData,
+            0,
+            false);
+    }
+}
+worker1.onmessage = (evt) => {
+    decoded1 = true;
+    workerEnabled = true;
+    if(evt.data.result == 0) {
+        displayGlobal.blitQoi(
+            evt.data.x,
+            evt.data.y,
+            evt.data.width,
+            evt.data.height,
+            evt.data.resultData,
+            0,
+            false);
+    }
+}
 
 const qoiErrors = {
     SUCCESS: 0,
@@ -140,52 +174,60 @@ export default class TightDecoder {
         if (data === null) {
             return false;
         }
+        if (decoded == true) {
+            worker.postMessage({data: data, x: x, y: y, width: width, height: height, depth: depth});
+            decoded = false;
+        } else if (decoded1 == true) {
+            worker1.postMessage({data: data, x: x, y: y, width: width, height: height, depth: depth});
+            decoded1 = false;
+        }
+        if (! workerEnabled) {
+            displayGlobal = display;
+            let pixelLength = width * height * 4;
+            let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
+            importData.set(data);
 
-        let pixelLength = width * height * 4;
-        let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
-        importData.set(data);
+            let resultData = new Uint8Array(this._instance.exports.memory.buffer,
+                                           importData.byteOffset + importData.length,
+                                           pixelLength);
+            let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
+                4, resultData);
 
-        let resultData = new Uint8Array(this._instance.exports.memory.buffer,
-                                       importData.byteOffset + importData.length,
-                                        pixelLength);
-        let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
-            4, resultData);
+            if(result == 0) {
+                display.blitImage(
+                    x,
+                    y,
+                    width,
+                    height,
+                    resultData,
+                    0,
+                    false);
+            } else {
+                switch (result) {
+                    case qoiErrors.QOI_INCOMPLETE_IMAGE: {
+                        Log.Info('QOI.decode: Incomplete image');
+                        break;
+                    } case qoiErrors.QOI_OUTPUT_CHANNELS_INVALID: {
+                        Log.Info("QOI.decode: The number of channels for the output is invalid");
+                        break;
+                    } case qoiErrors.QOI_COLORSPACE_INVALID: {
+                        Log.Info("QOI.decode: The colorspace declared in the file is invalid");
+                        break;
+                    } case qoiErrors.QOI_INVALID_CHANNELS: {
+                        Log.Info("QOI.decode: The number of channels declared in the file is invalid");
+                        break;
+                    } case qoiErrors.QOI_INVALID_SIGNATURE: {
+                        Log.Info("QOI.decode: The signature of the QOI file is invalid");
+                        break;
+                    } case qoiErrors.QOI_PIXEL_LENGTH_INVALID: {
+                        Log.Info("QOI.decode: The pixel length is ZERO");
+                        break;
+                    }
 
-        if(result == 0) {
-            display.blitImage(
-                x,
-                y,
-                width,
-                height,
-                resultData,
-                0,
-                false);
-        } else {
-            switch (result) {
-                case qoiErrors.QOI_INCOMPLETE_IMAGE: {
-                    Log.Info('QOI.decode: Incomplete image');
-                    break;
-                } case qoiErrors.QOI_OUTPUT_CHANNELS_INVALID: {
-                    Log.Info("QOI.decode: The number of channels for the output is invalid");
-                    break;
-                } case qoiErrors.QOI_COLORSPACE_INVALID: {
-                    Log.Info("QOI.decode: The colorspace declared in the file is invalid");
-                    break;
-                } case qoiErrors.QOI_INVALID_CHANNELS: {
-                    Log.Info("QOI.decode: The number of channels declared in the file is invalid");
-                    break;
-                } case qoiErrors.QOI_INVALID_SIGNATURE: {
-                    Log.Info("QOI.decode: The signature of the QOI file is invalid");
-                    break;
-                } case qoiErrors.QOI_PIXEL_LENGTH_INVALID: {
-                    Log.Info("QOI.decode: The pixel length is ZERO");
-                    break;
+                    return false;
                 }
-
-                return false;
             }
         }
-
         return true;
     }
 

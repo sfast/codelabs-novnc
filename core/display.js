@@ -425,7 +425,7 @@ export default class Display {
             newArr.set(new Uint8Array(arr.buffer, 0, newArr.length));
             this._renderQPush({
                 'type': 'blit',
-                'data': newArr,
+                'data': arr,
                 'x': x,
                 'y': y,
                 'width': width,
@@ -438,6 +438,22 @@ export default class Display {
                                              width * height * 4);
             let img = new ImageData(data, width, height);
             this._drawCtx.putImageData(img, x, y);
+            this._damage(x, y, width, height);
+        }
+    }
+
+    blitQoi(x, y, width, height, arr, offset, fromQueue) {
+        if (this._renderQ.length !== 0 && !fromQueue) {
+            this._renderQPush({
+                'type': 'blitQ',
+                'data': arr,
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+            });
+        } else {
+            this._drawCtx.putImageData(arr, x, y);
             this._damage(x, y, width, height);
         }
     }
@@ -550,6 +566,9 @@ export default class Display {
                     break;
                 case 'blit':
                     this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, true);
+                    break;
+                case 'blitQ':
+                    this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, true);
                     break;
                 case 'img':
                     if (a.img.complete) {

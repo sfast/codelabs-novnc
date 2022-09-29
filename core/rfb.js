@@ -2503,10 +2503,10 @@ export default class RFB extends EventTargetMixin {
         encs.push(encodings.encodingCopyRect);
         // Only supported with full depth support
         if (this._fbDepth == 24) {
-            encs.push(encodings.encodingTight);
-            encs.push(encodings.encodingTightPNG);
-            encs.push(encodings.encodingHextile);
-            encs.push(encodings.encodingRRE);
+            //encs.push(encodings.encodingTight);
+            //encs.push(encodings.encodingTightPNG);
+            //encs.push(encodings.encodingHextile);
+            //encs.push(encodings.encodingRRE);
         }
         encs.push(encodings.encodingRaw);
 
@@ -3044,7 +3044,7 @@ export default class RFB extends EventTargetMixin {
             encoding: parseInt((data[8] << 24) + (data[9] << 16) +
                                             (data[10] << 8) + data[11], 10)
         };
-
+        let decoder = null;
         switch (frame.encoding) {
             case encodings.pseudoEncodingLastRect:
                 if (document.visibilityState !== "hidden") {
@@ -3053,7 +3053,7 @@ export default class RFB extends EventTargetMixin {
                 }
                 break;
             case encodings.encodingTight:
-                let decoder = this._decoders[encodings.encodingUDP];
+                decoder = this._decoders[encodings.encodingUDP];
                 try {
                     decoder.decodeRect(frame.x, frame.y,
                         frame.width, frame.height,
@@ -3063,6 +3063,18 @@ export default class RFB extends EventTargetMixin {
                     this._fail("Error decoding rect: " + err);
                     return false;
                 }
+                break;
+            case encodings.encodingRaw:
+                decoder = this._decoders[encodings.encodingUDP];
+                //try {
+                    decoder.decodeRawRect(frame.x, frame.y,
+                        frame.width, frame.height,
+                        data, this._display,
+                        this._fbDepth);
+                //} catch (err) {
+                //    this._fail("Error decoding rect: " + err);
+                //    return false;
+                //}
                 break;
             default:
                 Log.Error("Invalid rect encoding via UDP: " + frame.encoding);

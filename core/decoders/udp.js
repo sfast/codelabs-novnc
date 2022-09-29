@@ -22,6 +22,38 @@ export default class UDPDecoder {
         }
     }
 
+    decodeRawRect(x, y, width, height, data, display, depth) {
+        if ((width === 0) || (height === 0)) {
+            return true;
+        }
+
+        const pixelSize = depth == 8 ? 1 : 4;
+        const pixels = width * height;
+
+
+        // Convert data if needed
+        if (depth == 8) {
+            const newdata = new Uint8Array(pixels * 4);
+            for (let i = 0; i < pixels; i++) {
+                newdata[i * 4 + 0] = ((data[i] >> 0) & 0x3) * 255 / 3;
+                newdata[i * 4 + 1] = ((data[i] >> 2) & 0x3) * 255 / 3;
+                newdata[i * 4 + 2] = ((data[i] >> 4) & 0x3) * 255 / 3;
+                newdata[i * 4 + 3] = 255;
+            }
+            data = newdata;
+        }
+
+        // Max sure the image is fully opaque
+        // TODO: is this really neccessary? Perhaps we could save network space by never transmitting the alpha channel if it is overriden anyway.
+        for (let i = 0; i < pixels; i++) {
+            data[i * 4 + 3] = 255;
+        }
+
+        display.blitImage(x, y, width, height, data, 0, false);
+
+        return true;
+    }
+
     decodeRect(x, y, width, height, data, display, depth) {
         let ctl = data[12];
         ctl = ctl >> 4;

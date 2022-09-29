@@ -31,7 +31,7 @@ export default class UDPDecoder {
         const pixels = width * height;
 
         //Remove meta data
-        data = data.slice(12, data.length - 1);
+        data = data.slice(12, data.length);
 
         // Convert data if needed
         if (depth == 8) {

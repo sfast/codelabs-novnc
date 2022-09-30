@@ -10,6 +10,50 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
+var worker = new Worker("decoder.js", { type: "module" });
+var worker1 = new Worker("decoder.js", { type: "module" });
+var workerEnabled = false;
+var displayGlobal;
+var decoded = true;
+var decoded1 = true;
+worker.onmessage = (evt) => {
+    decoded = true;
+    workerEnabled = true;
+    if(evt.data.result == 0) {
+        displayGlobal.blitQoi(
+            evt.data.x,
+            evt.data.y,
+            evt.data.width,
+            evt.data.height,
+            evt.data.resultData,
+            0,
+            false);
+    }
+};
+worker1.onmessage = (evt) => {
+    decoded1 = true;
+    workerEnabled = true;
+    if(evt.data.result == 0) {
+        displayGlobal.blitQoi(
+            evt.data.x,
+            evt.data.y,
+            evt.data.width,
+            evt.data.height,
+            evt.data.resultData,
+            0,
+            false);
+    }
+};
+
+const qoiErrors = {
+    SUCCESS: 0,
+    QOI_INCOMPLETE_IMAGE: 1,
+    QOI_OUTPUT_CHANNELS_INVALID: 2,
+    QOI_COLORSPACE_INVALID: 3,
+    QOI_INVALID_CHANNELS: 4,
+    QOI_INVALID_SIGNATURE: 5,
+    QOI_PIXEL_LENGTH_INVALID: 6,
+};
 
 export default class TightDecoder {
     constructor() {
@@ -23,6 +67,17 @@ export default class TightDecoder {
         for (let i = 0; i < 4; i++) {
             this._zlibs[i] = new Inflator();
         }
+
+        fetch("/core/decoders/qoi.wasm")
+            .then(bytes => bytes.arrayBuffer())
+            .then(mod => WebAssembly.compile(mod))
+            .then(module => {
+                return new WebAssembly.Instance(module);
+            })
+            .then(instance => {
+                this._instance = instance;
+            });
+
     }
 
     decodeRect(x, y, width, height, sock, display, depth) {
@@ -37,7 +92,7 @@ export default class TightDecoder {
             for (let i = 0; i < 4; i++) {
                 if ((this._ctl >> i) & 1) {
                     this._zlibs[i].reset();
-                    Log.Debug("Reset zlib stream " + i);
+                    Log.Info("Reset zlib stream " + i);
                 }
             }
 
@@ -61,6 +116,9 @@ export default class TightDecoder {
                                   sock, display, depth);
         } else if (this._ctl === 0x0B) {
             ret = this._webpRect(x, y, width, height,
+                                sock, display, depth);
+        } else if (this._ctl === 0x0C) {
+            ret = this._qoiRect(x, y, width, height,
                                 sock, display, depth);
         } else {
             throw new Error("Illegal tight compression received (ctl: " +
@@ -108,6 +166,68 @@ export default class TightDecoder {
 
         display.imageRect(x, y, width, height, "image/webp", data);
 
+        return true;
+    }
+
+    _qoiRect(x, y, width, height, sock, display, depth) {
+        let data = this._readData(sock);
+        if (data === null) {
+            return false;
+        }
+        if (decoded == true) {
+            worker.postMessage({data: data, x: x, y: y, width: width, height: height, depth: depth});
+            decoded = false;
+        } else if (decoded1 == true) {
+            worker1.postMessage({data: data, x: x, y: y, width: width, height: height, depth: depth});
+            decoded1 = false;
+        }
+        if (! workerEnabled) {
+            displayGlobal = display;
+            let pixelLength = width * height * 4;
+            let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
+            importData.set(data);
+
+            let resultData = new Uint8Array(this._instance.exports.memory.buffer,
+                                           importData.byteOffset + importData.length,
+                                           pixelLength);
+            let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
+                4, resultData);
+
+            if(result == 0) {
+                display.blitImage(
+                    x,
+                    y,
+                    width,
+                    height,
+                    resultData,
+                    0,
+                    false);
+            } else {
+                switch (result) {
+                    case qoiErrors.QOI_INCOMPLETE_IMAGE: {
+                        Log.Info('QOI.decode: Incomplete image');
+                        break;
+                    } case qoiErrors.QOI_OUTPUT_CHANNELS_INVALID: {
+                        Log.Info("QOI.decode: The number of channels for the output is invalid");
+                        break;
+                    } case qoiErrors.QOI_COLORSPACE_INVALID: {
+                        Log.Info("QOI.decode: The colorspace declared in the file is invalid");
+                        break;
+                    } case qoiErrors.QOI_INVALID_CHANNELS: {
+                        Log.Info("QOI.decode: The number of channels declared in the file is invalid");
+                        break;
+                    } case qoiErrors.QOI_INVALID_SIGNATURE: {
+                        Log.Info("QOI.decode: The signature of the QOI file is invalid");
+                        break;
+                    } case qoiErrors.QOI_PIXEL_LENGTH_INVALID: {
+                        Log.Info("QOI.decode: The pixel length is ZERO");
+                        break;
+                    }
+
+                    return false;
+                }
+            }
+        }
         return true;
     }
 

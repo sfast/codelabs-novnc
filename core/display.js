@@ -442,6 +442,22 @@ export default class Display {
         }
     }
 
+    blitQoi(x, y, width, height, arr, offset, fromQueue) {
+        if (this._renderQ.length !== 0 && !fromQueue) {
+            this._renderQPush({
+                'type': 'blitQ',
+                'data': arr,
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+            });
+        } else {
+            this._drawCtx.putImageData(arr, x, y);
+            this._damage(x, y, width, height);
+        }
+    }
+
     drawImage(img, x, y, w, h) {
         try {
 	    if (img.width != w || img.height != h) {
@@ -550,6 +566,9 @@ export default class Display {
                     break;
                 case 'blit':
                     this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, true);
+                    break;
+                case 'blitQ':
+                    this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, true);
                     break;
                 case 'img':
                     if (a.img.complete) {

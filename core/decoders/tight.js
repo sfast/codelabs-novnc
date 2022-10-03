@@ -34,28 +34,32 @@ export default class TightDecoder {
         }
         this._sabTest = typeof SharedArrayBuffer;
         if (this._sabTest !== 'undefined') {
-            this._threads = 32;
+            this._threads = 16;
             this._workerEnabled = false;
             this._displayGlobal = null;
             this._workers = [];
             this._isDecoded = [];
             this._sabs = [];
+            this._sabsR = [];
             this._arrs = [];
             for (let i = 0; i < this._threads; i++) {
                 this._workers.push(new Worker("decoder.js", { type: "module" }));
                 this._isDecoded.push(true);
                 this._sabs.push(new SharedArrayBuffer(5242880));
+                this._sabsR.push(new SharedArrayBuffer(20971520));
                 this._arrs.push(new Uint8Array(this._sabs[i]));
                 this._workers[i].onmessage = (evt) => {
                     this._isDecoded[i] = true;
                     this._workerEnabled = true;
                     if(evt.data.result == 0) {
+                        let data = new Uint8ClampedArray(this._sabsR[i].slice(0,  evt.data.length));
+                        let img = new ImageData(data.slice(), evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
                         this._displayGlobal.blitQoi(
                             evt.data.x,
                             evt.data.y,
                             evt.data.width,
                             evt.data.height,
-                            evt.data.resultData,
+                            img,
                             0,
                             false);
                     }
@@ -180,7 +184,8 @@ export default class TightDecoder {
                         width: width,
                         height: height,
                         depth: depth,
-                        sab: this._sabs[i]});
+                        sab: this._sabs[i],
+                        sabR: this._sabsR[i]});
                     this._isDecoded[i] = false;
                     break;
                 }

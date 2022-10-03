@@ -10,41 +10,6 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
-var worker = new Worker("decoder.js", { type: "module" });
-var worker1 = new Worker("decoder.js", { type: "module" });
-var workerEnabled = false;
-var displayGlobal;
-var decoded = true;
-var decoded1 = true;
-worker.onmessage = (evt) => {
-    decoded = true;
-    workerEnabled = true;
-    if(evt.data.result == 0) {
-        displayGlobal.blitQoi(
-            evt.data.x,
-            evt.data.y,
-            evt.data.width,
-            evt.data.height,
-            evt.data.resultData,
-            0,
-            false);
-    }
-};
-worker1.onmessage = (evt) => {
-    decoded1 = true;
-    workerEnabled = true;
-    if(evt.data.result == 0) {
-        displayGlobal.blitQoi(
-            evt.data.x,
-            evt.data.y,
-            evt.data.width,
-            evt.data.height,
-            evt.data.resultData,
-            0,
-            false);
-    }
-};
-
 const qoiErrors = {
     SUCCESS: 0,
     QOI_INCOMPLETE_IMAGE: 1,
@@ -66,6 +31,36 @@ export default class TightDecoder {
         this._zlibs = [];
         for (let i = 0; i < 4; i++) {
             this._zlibs[i] = new Inflator();
+        }
+        this._sabTest = typeof SharedArrayBuffer;
+        if (this._sabTest !== 'undefined') {
+            this._threads = 32;
+            this._workerEnabled = false;
+            this._displayGlobal = null;
+            this._workers = [];
+            this._isDecoded = [];
+            this._sabs = [];
+            this._arrs = [];
+            for (let i = 0; i < this._threads; i++) {
+                this._workers.push(new Worker("decoder.js", { type: "module" }));
+                this._isDecoded.push(true);
+                this._sabs.push(new SharedArrayBuffer(5242880));
+                this._arrs.push(new Uint8Array(this._sabs[i]));
+                this._workers[i].onmessage = (evt) => {
+                    this._isDecoded[i] = true;
+                    this._workerEnabled = true;
+                    if(evt.data.result == 0) {
+                        this._displayGlobal.blitQoi(
+                            evt.data.x,
+                            evt.data.y,
+                            evt.data.width,
+                            evt.data.height,
+                            evt.data.resultData,
+                            0,
+                            false);
+                    }
+                };
+            }
         }
 
         fetch("/core/decoders/qoi.wasm")
@@ -174,15 +169,27 @@ export default class TightDecoder {
         if (data === null) {
             return false;
         }
-        if (decoded == true) {
-            worker.postMessage({data: data, x: x, y: y, width: width, height: height, depth: depth});
-            decoded = false;
-        } else if (decoded1 == true) {
-            worker1.postMessage({data: data, x: x, y: y, width: width, height: height, depth: depth});
-            decoded1 = false;
+        if (this._sabTest !== 'undefined') {
+            for (let i = 0; i < this._threads; i++) {
+                if (this._isDecoded[i] == true) {
+                    this._arrs[i].set(data);
+                    this._workers[i].postMessage({
+                        length: data.length,
+                        x: x,
+                        y: y,
+                        width: width,
+                        height: height,
+                        depth: depth,
+                        sab: this._sabs[i]});
+                    this._isDecoded[i] = false;
+                    break;
+                }
+            }
         }
-        if (! workerEnabled) {
-            displayGlobal = display;
+        if (! this._workerEnabled) {
+            if (! this._displayGlobal) {
+                this._displayGlobal = display;
+            }
             let pixelLength = width * height * 4;
             let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
             importData.set(data);

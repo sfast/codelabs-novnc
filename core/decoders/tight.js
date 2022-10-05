@@ -34,7 +34,7 @@ export default class TightDecoder {
         }
         this._sabTest = typeof SharedArrayBuffer;
         if (this._sabTest !== 'undefined') {
-            this._threads = 16;
+            this._threads = 48;
             this._workerEnabled = false;
             this._displayGlobal = null;
             this._workers = [];
@@ -45,8 +45,8 @@ export default class TightDecoder {
             for (let i = 0; i < this._threads; i++) {
                 this._workers.push(new Worker("decoder.js", { type: "module" }));
                 this._isDecoded.push(true);
-                this._sabs.push(new SharedArrayBuffer(5242880));
-                this._sabsR.push(new SharedArrayBuffer(20971520));
+                this._sabs.push(new SharedArrayBuffer(655360));
+                this._sabsR.push(new SharedArrayBuffer(2621440));
                 this._arrs.push(new Uint8Array(this._sabs[i]));
                 this._workers[i].onmessage = (evt) => {
                     this._isDecoded[i] = true;

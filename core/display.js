@@ -51,15 +51,10 @@ export default class Display {
         this._backbuffer = document.createElement('canvas');
         this._drawCtx = this._backbuffer.getContext('2d');
 
-        this._damageBounds = { left: 0, top: 0,
-                               right: this._backbuffer.width,
-                               bottom: this._backbuffer.height };
-
         Log.Debug("User Agent: " + navigator.userAgent);
 
         // performance metrics, try to calc a fps equivelant
         this._flipCnt = 0;
-        this._currentFrameDamages = [];
         this._lastFlip = Date.now();
         setInterval(function() {
             let delta = Date.now() - this._lastFlip;
@@ -162,7 +157,6 @@ export default class Display {
         vp.x += deltaX;
         vp.y += deltaY;
 
-        this._damage(vp.x, vp.y, vp.w, vp.h);
 
         this.flip();
     }
@@ -200,7 +194,6 @@ export default class Display {
             // The position might need to be updated if we've grown
             this.viewportChangePos(0, 0);
 
-            this._damage(vp.x, vp.y, vp.w, vp.h);
             this.flip();
 
             // Update the visible size of the target canvas
@@ -256,22 +249,6 @@ export default class Display {
         this.viewportChangePos(0, 0);
     }
 
-    // Track what parts of the visible canvas that need updating
-    _damage(x, y, w, h) {
-        if (x < this._damageBounds.left) {
-            this._damageBounds.left = x;
-        }
-        if (y < this._damageBounds.top) {
-            this._damageBounds.top = y;
-        }
-        if ((x + w) > this._damageBounds.right) {
-            this._damageBounds.right = x + w;
-        }
-        if ((y + h) > this._damageBounds.bottom) {
-            this._damageBounds.bottom = y + h;
-        }
-    }
-
     // Attempt to determine when updates overlap an area and thus indicate a new frame
     isNewFrame(x, y, w, h) {
         for (var i = 0; i < this._currentFrameDamages.length; i++) {
@@ -295,45 +272,7 @@ export default class Display {
                 'type': 'flip'
             });
         } else {
-            let x = this._damageBounds.left;
-            let y = this._damageBounds.top;
-            let w = this._damageBounds.right - x;
-            let h = this._damageBounds.bottom - y;
-
-            let vx = x - this._viewportLoc.x;
-            let vy = y - this._viewportLoc.y;
-
-            if (vx < 0) {
-                w += vx;
-                x -= vx;
-                vx = 0;
-            }
-            if (vy < 0) {
-                h += vy;
-                y -= vy;
-                vy = 0;
-            }
-
-            if ((vx + w) > this._viewportLoc.w) {
-                w = this._viewportLoc.w - vx;
-            }
-            if ((vy + h) > this._viewportLoc.h) {
-                h = this._viewportLoc.h - vy;
-            }
-
-            if ((w > 0) && (h > 0)) {
-                // FIXME: We may need to disable image smoothing here
-                //        as well (see copyImage()), but we haven't
-                //        noticed any problem yet.
-                this._targetCtx.drawImage(this._backbuffer,
-                                          x, y, w, h,
-                                          vx, vy, w, h);
-
                 this._flipCnt += 1;
-            }
-	  
-            this._damageBounds.left = this._damageBounds.top = 65535;
-            this._damageBounds.right = this._damageBounds.bottom = 0;
         }
     }
 
@@ -362,7 +301,6 @@ export default class Display {
         } else {
             this._setFillColor(color);
             this._drawCtx.fillRect(x, y, width, height);
-            this._damage(x, y, width, height);
         }
     }
 
@@ -393,7 +331,6 @@ export default class Display {
             this._drawCtx.drawImage(this._backbuffer,
                                     oldX, oldY, w, h,
                                     newX, newY, w, h);
-            this._damage(newX, newY, w, h);
         }
     }
 
@@ -438,7 +375,6 @@ export default class Display {
                                              width * height * 4);
             let img = new ImageData(data, width, height);
             this._drawCtx.putImageData(img, x, y);
-            this._damage(x, y, width, height);
         }
     }
 
@@ -453,8 +389,7 @@ export default class Display {
                 'height': height,
             });
         } else {
-            this._drawCtx.putImageData(arr, x, y);
-            this._damage(x, y, width, height);
+            this._targetCtx.putImageData(arr, x, y);
         }
     }
 
@@ -468,7 +403,6 @@ export default class Display {
         } catch (error) {
             Log.Error('Invalid image recieved.'); //KASM-2090
         }
-        this._damage(x, y, w, h);
     }
 
     autoscale(containerWidth, containerHeight, scaleRatio=0) {

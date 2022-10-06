@@ -7,7 +7,6 @@
  */
 
 import * as Log from './util/logging.js';
-import Base64 from "./base64.js";
 import { toSigned32bit } from './util/int.js';
 
 export default class Display {
@@ -404,7 +403,7 @@ export default class Display {
         }
 
         const img = new Image();
-        img.src = "data: " + mime + ";base64," + Base64.encode(arr);
+	img.src = "data: " + mime + ";base64," + btoa(String.fromCharCode.apply(null, arr));
 
         this._renderQPush({
             'type': 'img',
@@ -453,8 +452,7 @@ export default class Display {
                 'height': height,
             });
         } else {
-            this._drawCtx.putImageData(arr, x, y);
-            this._damage(x, y, width, height);
+            this._targetCtx.putImageData(arr, x, y);
         }
     }
 

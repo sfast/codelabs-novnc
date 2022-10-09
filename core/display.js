@@ -452,7 +452,9 @@ export default class Display {
                 'height': height,
             });
         } else {
-            this._targetCtx.putImageData(arr, x, y);
+            window.requestAnimationFrame(() => {
+                this._targetCtx.putImageData(arr, x, y);
+            });
         }
     }
 

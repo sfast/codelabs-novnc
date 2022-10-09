@@ -34,7 +34,7 @@ export default class TightDecoder {
         }
         this._sabTest = typeof SharedArrayBuffer;
         if (this._sabTest !== 'undefined') {
-            this._threads = 32;
+            this._threads = 40;
             this._workerEnabled = false;
             this._displayGlobal = null;
             this._workers = [];
@@ -42,11 +42,13 @@ export default class TightDecoder {
             this._sabs = [];
             this._sabsR = [];
             this._arrs = [];
+            this._qoiRects = [];
+            this._rectQlooping = false;
             for (let i = 0; i < this._threads; i++) {
                 this._workers.push(new Worker("decoder.js"));
                 this._isDecoded.push(true);
-                this._sabs.push(new SharedArrayBuffer(5242880));
-                this._sabsR.push(new SharedArrayBuffer(20971520));
+                this._sabs.push(new SharedArrayBuffer(300000));
+                this._sabsR.push(new SharedArrayBuffer(400000));
                 this._arrs.push(new Uint8Array(this._sabs[i]));
                 this._workers[i].onmessage = (evt) => {
                     this._isDecoded[i] = true;
@@ -168,27 +170,42 @@ export default class TightDecoder {
         return true;
     }
 
+    _processRectQ() {
+        for (let ri in this._qoiRects) {
+            workerLoop:
+            for (let i = 0; i < this._threads; i++) {
+                if (this._isDecoded[i] == true) {
+                    this._isDecoded[i] = false;
+                    this._arrs[i].set(this._qoiRects[ri].data);
+                    this._workers[i].postMessage({
+                        length: this._qoiRects[ri].data.length,
+                        x: this._qoiRects[ri].x,
+                        y: this._qoiRects[ri].y,
+                        width: this._qoiRects[ri].width,
+                        height: this._qoiRects[ri].height,
+                        depth: this._qoiRects[ri].depth,
+                        sab: this._sabs[i],
+                        sabR: this._sabsR[i]});
+                    delete this._qoiRects[ri];
+                    break workerLoop;
+                }
+            }
+        }
+        this._rectQlooping = false;
+    }
+
     _qoiRect(x, y, width, height, sock, display, depth) {
         let data = this._readData(sock);
         if (data === null) {
             return false;
         }
         if (this._sabTest !== 'undefined') {
-            for (let i = 0; i < this._threads; i++) {
-                if (this._isDecoded[i] == true) {
-                    this._arrs[i].set(data);
-                    this._workers[i].postMessage({
-                        length: data.length,
-                        x: x,
-                        y: y,
-                        width: width,
-                        height: height,
-                        depth: depth,
-                        sab: this._sabs[i],
-                        sabR: this._sabsR[i]});
-                    this._isDecoded[i] = false;
-                    break;
-                }
+            let dataClone = new Uint8Array(data);
+            let item = {x: x,y: y,width: width,height: height,data: dataClone,depth: depth};
+            this._qoiRects.push(item);
+            if (! this._rectQlooping) {
+                this._rectQlooping = true;
+                this._processRectQ();
             }
         }
         if (! this._workerEnabled) {

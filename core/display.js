@@ -7,6 +7,7 @@
  */
 
 import * as Log from './util/logging.js';
+import Base64 from "./base64.js";
 import { toSigned32bit } from './util/int.js';
 
 export default class Display {
@@ -401,9 +402,8 @@ export default class Display {
         if ((width === 0) || (height === 0)) {
             return;
         }
-
         const img = new Image();
-	img.src = "data: " + mime + ";base64," + btoa(String.fromCharCode.apply(null, arr));
+        img.src = "data: " + mime + ";base64," + Base64.encode(arr);
 
         this._renderQPush({
             'type': 'img',

@@ -234,7 +234,7 @@ export default class Display {
             // We have to save the canvas data since changing the size will clear it
             let saveImg = null;
             if (canvas.width > 0 && canvas.height > 0) {
-                saveImg = this._drawCtx.getImageData(0, 0, canvas.width, canvas.height);
+                saveImg = this._targetCtx.getImageData(0, 0, canvas.width, canvas.height);
             }
 
             if (canvas.width !== width) {
@@ -245,7 +245,7 @@ export default class Display {
             }
 
             if (saveImg) {
-                this._drawCtx.putImageData(saveImg, 0, 0);
+                this._targetCtx.putImageData(saveImg, 0, 0);
             }
         }
 
@@ -258,6 +258,7 @@ export default class Display {
 
     // Track what parts of the visible canvas that need updating
     _damage(x, y, w, h) {
+        return;
         if (x < this._damageBounds.left) {
             this._damageBounds.left = x;
         }
@@ -290,6 +291,7 @@ export default class Display {
     // Update the visible canvas with the contents of the
     // rendering canvas
     flip(fromQueue) {
+        return;
         if (this._renderQ.length !== 0 && !fromQueue) {
             this._renderQPush({
                 'type': 'flip'
@@ -361,7 +363,7 @@ export default class Display {
             });
         } else {
             this._setFillColor(color);
-            this._drawCtx.fillRect(x, y, width, height);
+            this._targetCtx.fillRect(x, y, width, height);
             this._damage(x, y, width, height);
         }
     }
@@ -385,12 +387,12 @@ export default class Display {
             //
             // We need to set these every time since all properties are reset
             // when the the size is changed
-            this._drawCtx.mozImageSmoothingEnabled = false;
-            this._drawCtx.webkitImageSmoothingEnabled = false;
-            this._drawCtx.msImageSmoothingEnabled = false;
-            this._drawCtx.imageSmoothingEnabled = false;
+            this._targetCtx.mozImageSmoothingEnabled = false;
+            this._targetCtx.webkitImageSmoothingEnabled = false;
+            this._targetCtx.msImageSmoothingEnabled = false;
+            this._targetCtx.imageSmoothingEnabled = false;
 
-            this._drawCtx.drawImage(this._backbuffer,
+            this._targetCtx.drawImage(this._backbuffer,
                                     oldX, oldY, w, h,
                                     newX, newY, w, h);
             this._damage(newX, newY, w, h);
@@ -436,7 +438,7 @@ export default class Display {
                                              arr.byteOffset + offset,
                                              width * height * 4);
             let img = new ImageData(data, width, height);
-            this._drawCtx.putImageData(img, x, y);
+            this._targetCtx.putImageData(img, x, y);
             this._damage(x, y, width, height);
         }
     }
@@ -453,6 +455,10 @@ export default class Display {
             });
         } else {
             window.requestAnimationFrame(() => {
+                this._targetCtx.mozImageSmoothingEnabled = false;
+                this._targetCtx.webkitImageSmoothingEnabled = false;
+                this._targetCtx.msImageSmoothingEnabled = false;
+                this._targetCtx.imageSmoothingEnabled = false;
                 this._targetCtx.putImageData(arr, x, y);
             });
         }
@@ -461,14 +467,18 @@ export default class Display {
     drawImage(img, x, y, w, h) {
         try {
 	    if (img.width != w || img.height != h) {
-                this._drawCtx.drawImage(img, x, y, w, h);
+            window.requestAnimationFrame(() => {
+                this._targetCtx.drawImage(img, x, y, w, h);
+            });
             } else {
-                this._drawCtx.drawImage(img, x, y);
+            window.requestAnimationFrame(() => {
+                this._targetCtx.drawImage(img, x, y);
+            });
             }
         } catch (error) {
             Log.Error('Invalid image recieved.'); //KASM-2090
         }
-        this._damage(x, y, w, h);
+        //this._damage(x, y, w, h);
     }
 
     autoscale(containerWidth, containerHeight, scaleRatio=0) {
@@ -528,7 +538,7 @@ export default class Display {
     _setFillColor(color) {
         const newStyle = 'rgb(' + color[0] + ',' + color[1] + ',' + color[2] + ')';
         if (newStyle !== this._prevDrawStyle) {
-            this._drawCtx.fillStyle = newStyle;
+            this._targetCtx.fillStyle = newStyle;
             this._prevDrawStyle = newStyle;
         }
     }

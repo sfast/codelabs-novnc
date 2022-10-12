@@ -3181,9 +3181,7 @@ export default class RFB extends EventTargetMixin {
             this._FBU.encoding = null;
         }
 
-        if (document.visibilityState !== "hidden") {
-            this._display.flip();
-        }
+        this._display.flip();
 
         return true;  // We finished this FBU
     }

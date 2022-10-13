@@ -51,15 +51,14 @@ export default class Display {
 
         // performance metrics, try to calc a fps equivelant
         this._flipCnt = 0;
-        this._currentFrameDamages = [];
         this._lastFlip = Date.now();
         setInterval(function() {
             let delta = Date.now() - this._lastFlip;
             if (delta > 0) {
                 this._fps = (this._flipCnt / (delta / 1000)).toFixed(2);
             }
-            this._lastFlip = Date.now();
             this._flipCnt = 0;
+            this._lastFlip = Date.now();
         }.bind(this), 5000);
 
         Log.Debug("<< Display.constructor");
@@ -250,9 +249,8 @@ export default class Display {
                 'type': 'flip'
             });
         } else {
-            // TODO: Since only one frame is processed, we could use a for loop and avoid the shift operation, which likely is less performant
-            while (this._currentFrame.length > 0) {
-                const a = this._currentFrame[0];
+            for (let i = 0; i < this._currentFrame.length; i++) {
+                const a = this._currentFrame[i];
                 switch (a.type) {
                     case 'copy':
                         this.copyImage(a.oldX, a.oldY, a.x, a.y, a.width, a.height, true);
@@ -267,8 +265,6 @@ export default class Display {
                         this.drawImage(a.img, a.x, a.y, a.width, a.height);
                         break;
                 }
-    
-                this._currentFrame.shift();
             }
             this._flipCnt += 1;
         }
@@ -470,12 +466,8 @@ export default class Display {
             switch (a.type) {
                 case 'flip':
                     this._currentFrame = this._nextFrame;
-                    //TODO: If the currentFrame len is greater than 0, we are dropping a frame. We could count this and add to stats
-                    // This is normal however, if the user changed tabs on the browser, requestAnimationFrame will not be fired and frames should be dropped
                     this._nextFrame = [];
-                    window.requestAnimationFrame(() => {
-                        this.flip(true);
-                    });
+                    this.flip(true);
                     break;
                 case 'img':
                     if (a.img.complete) {

@@ -228,6 +228,7 @@ export default class RFB extends EventTargetMixin {
         this._canvas.width = 0;
         this._canvas.height = 0;
         this._canvas.tabIndex = -1;
+        this._canvas.overflow = 'hidden';
         this._screen.appendChild(this._canvas);
 
         // Cursor

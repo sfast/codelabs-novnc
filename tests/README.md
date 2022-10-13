@@ -23,6 +23,18 @@ mv /home/ubuntu/record.bin.8 /usr/share/kasmvnc/www/recordings
 
 Place recordings on the KasmVNC server in the /usr/share/kasmvnc/www/recordings directory, you may need to create this directory. Then navigate to https://server-ip:8444/tests/vnc_playback.html?data=record.bin.8 where record.bin.8 is the name of the playback file you placed in the recordings directory.
 
+## Pre-Test Modifications
+
+Before running performance testing using recording playback, you need to run noVNC from source, rather than the 'compiled' webpack. See the docs at docs/DEVELOP.md for running noVNC from source. Next, you will need to modify core/display.js to not use requestAnimationFrame to process a frame. If this is not done, frames will be dropped if your system is able to process the playback faster than it can write rects to the cavans. Search display.js for requestAnimationFrame and comment out the line above and below the call to flip as shown below. 
+
+```javascript
+//window.requestAnimationFrame(() => {
+    this.flip(true);
+//});
+```
+
+After this is done, processing frames will be a blocking call, therefore, no frames are dropped and your speed results will be accurate.
+
 ## Kasm Provided Recordings
 
 The following recordings are used by Kasm Technologies to provide repeatable performance statisitics using different rendering settings.

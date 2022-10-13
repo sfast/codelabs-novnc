@@ -193,7 +193,7 @@ export default class RFB extends EventTargetMixin {
         this._viewportHasMoved = false;
         this._accumulatedWheelDeltaX = 0;
         this._accumulatedWheelDeltaY = 0;
-        this.mouseButtonMapper = new MouseButtonMapper();
+        this.mouseButtonMapper = null;
 
         // Gesture state
         this._gestureLastTapTime = null;

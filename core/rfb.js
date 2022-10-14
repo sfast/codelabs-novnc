@@ -43,6 +43,7 @@ const DEFAULT_BACKGROUND = 'rgb(40, 40, 40)';
 
 var _videoQuality =  2;
 var _enableWebP = false;
+var _enableQOI = false;
 
 // Minimum wait (ms) between two mouse moves
 const MOUSE_MOVE_DELAY = 17; 
@@ -139,6 +140,7 @@ export default class RFB extends EventTargetMixin {
         this._maxVideoResolutionY = 540;
         this._clipboardBinary = true;
         this._useUdp = true;
+        this._enableQOI = false;
         this.TransitConnectionStates = {
             Tcp: Symbol("tcp"),
             Udp: Symbol("udp"),
@@ -478,6 +480,16 @@ export default class RFB extends EventTargetMixin {
             return;
         }
         this._enableWebP = enabled; 
+        this._pendingApplyEncodingChanges = true;
+    }
+
+    get enableQOI() { return this._enableQOI; }
+    set enableQOI(enabled) {
+        if(this._enableQOI === enabled) {
+            return;
+        }
+
+        this._enableQOI = enabled;
         this._pendingApplyEncodingChanges = true;
     }
 
@@ -2481,6 +2493,10 @@ export default class RFB extends EventTargetMixin {
         return true;
     }
 
+    _hasQOI() {
+        return this.enableQOI;
+    }
+
     _hasWebp() {
         /*
         return new Promise(res => {
@@ -2537,6 +2553,8 @@ export default class RFB extends EventTargetMixin {
         encs.push(encodings.pseudoEncodingExtendedClipboard);
         if (this._hasWebp())
             encs.push(encodings.pseudoEncodingWEBP);
+        if (this._hasQOI())
+            encs.push(encodings.pseudoEncodingQOI);
 
         // kasm settings; the server may be configured to ignore these
         encs.push(encodings.pseudoEncodingJpegVideoQualityLevel0 + this.jpegVideoQuality);

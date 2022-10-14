@@ -10,6 +10,15 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
+const qoiErrors = {
+    SUCCESS: 0,
+    QOI_INCOMPLETE_IMAGE: 1,
+    QOI_OUTPUT_CHANNELS_INVALID: 2,
+    QOI_COLORSPACE_INVALID: 3,
+    QOI_INVALID_CHANNELS: 4,
+    QOI_INVALID_SIGNATURE: 5,
+    QOI_PIXEL_LENGTH_INVALID: 6,
+};
 
 export default class TightDecoder {
     constructor() {
@@ -23,6 +32,53 @@ export default class TightDecoder {
         for (let i = 0; i < 4; i++) {
             this._zlibs[i] = new Inflator();
         }
+        this._sabTest = typeof SharedArrayBuffer;
+        if (this._sabTest !== 'undefined') {
+            this._threads = 40;
+            this._workerEnabled = false;
+            this._displayGlobal = null;
+            this._workers = [];
+            this._isDecoded = [];
+            this._sabs = [];
+            this._sabsR = [];
+            this._arrs = [];
+            this._qoiRects = [];
+            this._rectQlooping = false;
+            for (let i = 0; i < this._threads; i++) {
+                this._workers.push(new Worker("/core/decoders/qoi/decoder.js"));
+                this._isDecoded.push(true);
+                this._sabs.push(new SharedArrayBuffer(300000));
+                this._sabsR.push(new SharedArrayBuffer(400000));
+                this._arrs.push(new Uint8Array(this._sabs[i]));
+                this._workers[i].onmessage = (evt) => {
+                    this._isDecoded[i] = true;
+                    this._workerEnabled = true;
+                    if(evt.data.result == 0) {
+                        let data = new Uint8ClampedArray(this._sabsR[i].slice(0,  evt.data.length));
+                        let img = new ImageData(data.slice(), evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
+                        this._displayGlobal.blitQoi(
+                            evt.data.x,
+                            evt.data.y,
+                            evt.data.width,
+                            evt.data.height,
+                            img,
+                            0,
+                            false);
+                    }
+                };
+            }
+        }
+
+        fetch("/core/decoders/qoi/qoi.wasm")
+            .then(bytes => bytes.arrayBuffer())
+            .then(mod => WebAssembly.compile(mod))
+            .then(module => {
+                return new WebAssembly.Instance(module);
+            })
+            .then(instance => {
+                this._instance = instance;
+            });
+
     }
 
     decodeRect(x, y, width, height, sock, display, depth) {
@@ -37,7 +93,7 @@ export default class TightDecoder {
             for (let i = 0; i < 4; i++) {
                 if ((this._ctl >> i) & 1) {
                     this._zlibs[i].reset();
-                    Log.Debug("Reset zlib stream " + i);
+                    Log.Info("Reset zlib stream " + i);
                 }
             }
 
@@ -61,6 +117,9 @@ export default class TightDecoder {
                                   sock, display, depth);
         } else if (this._ctl === 0x0B) {
             ret = this._webpRect(x, y, width, height,
+                                sock, display, depth);
+        } else if (this._ctl === 0x0C) {
+            ret = this._qoiRect(x, y, width, height,
                                 sock, display, depth);
         } else {
             throw new Error("Illegal tight compression received (ctl: " +
@@ -108,6 +167,96 @@ export default class TightDecoder {
 
         display.imageRect(x, y, width, height, "image/webp", data);
 
+        return true;
+    }
+
+    _processRectQ() {
+        for (let ri in this._qoiRects) {
+            workerLoop:
+            for (let i = 0; i < this._threads; i++) {
+                if (this._isDecoded[i] == true) {
+                    this._isDecoded[i] = false;
+                    this._arrs[i].set(this._qoiRects[ri].data);
+                    this._workers[i].postMessage({
+                        length: this._qoiRects[ri].data.length,
+                        x: this._qoiRects[ri].x,
+                        y: this._qoiRects[ri].y,
+                        width: this._qoiRects[ri].width,
+                        height: this._qoiRects[ri].height,
+                        depth: this._qoiRects[ri].depth,
+                        sab: this._sabs[i],
+                        sabR: this._sabsR[i]});
+                    delete this._qoiRects[ri];
+                    break workerLoop;
+                }
+            }
+        }
+        this._rectQlooping = false;
+    }
+
+    _qoiRect(x, y, width, height, sock, display, depth) {
+        let data = this._readData(sock);
+        if (data === null) {
+            return false;
+        }
+        if (this._sabTest !== 'undefined') {
+            let dataClone = new Uint8Array(data);
+            let item = {x: x,y: y,width: width,height: height,data: dataClone,depth: depth};
+            this._qoiRects.push(item);
+            if (! this._rectQlooping) {
+                this._rectQlooping = true;
+                this._processRectQ();
+            }
+        }
+        if (! this._workerEnabled) {
+            if (! this._displayGlobal) {
+                this._displayGlobal = display;
+            }
+            let pixelLength = width * height * 4;
+            let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
+            importData.set(data);
+
+            let resultData = new Uint8Array(this._instance.exports.memory.buffer,
+                                           importData.byteOffset + importData.length,
+                                           pixelLength);
+            let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
+                4, resultData);
+
+            if(result == 0) {
+                display.blitImage(
+                    x,
+                    y,
+                    width,
+                    height,
+                    resultData,
+                    0,
+                    false);
+            } else {
+                switch (result) {
+                    case qoiErrors.QOI_INCOMPLETE_IMAGE: {
+                        Log.Info('QOI.decode: Incomplete image');
+                        break;
+                    } case qoiErrors.QOI_OUTPUT_CHANNELS_INVALID: {
+                        Log.Info("QOI.decode: The number of channels for the output is invalid");
+                        break;
+                    } case qoiErrors.QOI_COLORSPACE_INVALID: {
+                        Log.Info("QOI.decode: The colorspace declared in the file is invalid");
+                        break;
+                    } case qoiErrors.QOI_INVALID_CHANNELS: {
+                        Log.Info("QOI.decode: The number of channels declared in the file is invalid");
+                        break;
+                    } case qoiErrors.QOI_INVALID_SIGNATURE: {
+                        Log.Info("QOI.decode: The signature of the QOI file is invalid");
+                        break;
+                    } case qoiErrors.QOI_PIXEL_LENGTH_INVALID: {
+                        Log.Info("QOI.decode: The pixel length is ZERO");
+                        break;
+                    }
+
+                    return false;
+                }
+            }
+        }
         return true;
     }
 

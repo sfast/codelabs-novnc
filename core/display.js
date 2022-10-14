@@ -333,7 +333,6 @@ export default class Display {
         if ((width === 0) || (height === 0)) {
             return;
         }
-
         const img = new Image();
         img.src = "data: " + mime + ";base64," + Base64.encode(arr);
 
@@ -369,6 +368,23 @@ export default class Display {
                                              width * height * 4);
             let img = new ImageData(data, width, height);
             this._targetCtx.putImageData(img, x, y);
+        }
+    }
+
+    blitQoi(x, y, width, height, arr, offset, fromQueue) {
+        if (this._renderQ.length !== 0 && !fromQueue) {
+            this._renderQPush({
+                'type': 'blitQ',
+                'data': arr,
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+            });
+        } else {
+            window.requestAnimationFrame(() => {
+                this._targetCtx.putImageData(arr, x, y);
+            });
         }
     }
 
@@ -468,6 +484,9 @@ export default class Display {
                     this._currentFrame = this._nextFrame;
                     this._nextFrame = [];
                     this.flip(true);
+                    break;
+                case 'blitQ':
+                    this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, true);
                     break;
                 case 'img':
                     if (a.img.complete) {

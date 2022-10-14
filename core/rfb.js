@@ -1084,16 +1084,20 @@ export default class RFB extends EventTargetMixin {
                                         (u8[14] << 16) +
                                         (u8[15] << 24), 10);
                 // TODO: check the hash. It's the low 32 bits of XXH64, seed 0
+                const frame = parseInt(u8[16] +
+                                        (u8[17] << 8) +
+                                        (u8[18] << 16) +
+                                        (u8[19] << 24), 10);
 
                 if (pieces == 1) { // Handle it immediately
-                    me._handleUdpRect(u8.slice(16));
+                    me._handleUdpRect(u8.slice(20));
                 } else { // Insert into wait array
                     const now = Date.now();
 		    
                     if (udpBuffer.has(id)) {
                         let item = udpBuffer.get(id);
                         item.recieved_pieces += 1;
-                        item.data[i] = u8.slice(16);
+                        item.data[i] = u8.slice(20);
                         item.total_bytes += item.data[i].length;
 
                         if (item.total_pieces == item.recieved_pieces) {
@@ -1115,7 +1119,7 @@ export default class RFB extends EventTargetMixin {
                             total_bytes: 0,         // total size of all data pieces combined
                             data: new Array(pieces)
                         }
-                        item.data[i] = u8.slice(16);
+                        item.data[i] = u8.slice(20);
                         item.total_bytes = item.data[i].length;
                         udpBuffer.set(id, item);
                     }

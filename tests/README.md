@@ -25,15 +25,7 @@ Place recordings on the KasmVNC server in the /usr/share/kasmvnc/www/recordings 
 
 ## Pre-Test Modifications
 
-Before running performance testing using recording playback, you need to run noVNC from source, rather than the 'compiled' webpack. See the docs at docs/DEVELOP.md for running noVNC from source. Next, you will need to modify core/display.js to not use requestAnimationFrame to process a frame. If this is not done, frames will be dropped if your system is able to process the playback faster than it can write rects to the cavans. Search display.js for requestAnimationFrame and comment out the line above and below the call to flip as shown below. 
-
-```javascript
-//window.requestAnimationFrame(() => {
-    this.flip(true);
-//});
-```
-
-After this is done, processing frames will be a blocking call, therefore, no frames are dropped and your speed results will be accurate.
+Before running performance testing using recording playback, you need to run noVNC from source, rather than the 'compiled' webpack. See the docs at docs/DEVELOP.md for running noVNC from source. 
 
 ## Kasm Provided Recordings
 

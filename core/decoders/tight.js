@@ -22,7 +22,7 @@ const qoiErrors = {
 };
 
 export default class TightDecoder {
-    constructor() {
+    constructor(display) {
         this._ctl = null;
         this._filter = null;
         this._numColors = 0;
@@ -35,9 +35,9 @@ export default class TightDecoder {
         }
         this._sabTest = typeof SharedArrayBuffer;
         if (this._sabTest !== 'undefined') {
-            this._threads = 20;
+            this._threads = 40;
             this._workerEnabled = false;
-            this._displayGlobal = null;
+            this._displayGlobal = display;
             this._workers = [];
             this._isDecoded = [];
             this._sabs = [];
@@ -203,19 +203,34 @@ export default class TightDecoder {
         if (data === null) {
             return false;
         }
+        let queued = false;
         if (this._sabTest !== 'undefined') {
-            let item = {x: x,y: y,width: width,height: height,data: data,depth: depth};
+            /*let item = {x: x,y: y,width: width,height: height,data: data,depth: depth};
             this._qoiRects.push(item);
             if (! this._rectQlooping) {
                 this._rectQlooping = true;
                 this._processRectQ();
+            }*/
+            for (let i = 0; i < this._threads; i++) {
+                if (this._isDecoded[i] == true) {
+                    this._isDecoded[i] = false;
+                    this._arrs[i].set(data);
+                    this._workers[i].postMessage({
+                        length: data.length,
+                        x: x,
+                        y: y,
+                        width: width,
+                        height: height,
+                        depth: depth,
+                        sab: this._sabs[i],
+                        sabR: this._sabsR[i]});
+                    queued = true;
+                }
+                
             }
         }
         
-        if (! this._workerEnabled) {
-            if (! this._displayGlobal) {
-                this._displayGlobal = display;
-            }
+        if (!queued) {
             let pixelLength = width * height * 4;
             let img_width = parseInt(data[7] +
                 (data[6] << 8) +

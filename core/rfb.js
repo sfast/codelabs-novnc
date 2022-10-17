@@ -250,15 +250,6 @@ export default class RFB extends EventTargetMixin {
         // initial cursor instead.
         this._cursorImage = RFB.cursors.none;
 
-        // populate decoder array with objects
-        this._decoders[encodings.encodingRaw] = new RawDecoder();
-        this._decoders[encodings.encodingCopyRect] = new CopyRectDecoder();
-        this._decoders[encodings.encodingRRE] = new RREDecoder();
-        this._decoders[encodings.encodingHextile] = new HextileDecoder();
-        this._decoders[encodings.encodingTight] = new TightDecoder();
-        this._decoders[encodings.encodingTightPNG] = new TightPNGDecoder();
-        this._decoders[encodings.encodingUDP] = new UDPDecoder();
-
         // NB: nothing that needs explicit teardown should be done
         // before this point, since this can throw an exception
         try {
@@ -268,6 +259,15 @@ export default class RFB extends EventTargetMixin {
             throw exc;
         }
         this._display.onflush = this._onFlush.bind(this);
+
+        // populate decoder array with objects
+        this._decoders[encodings.encodingRaw] = new RawDecoder();
+        this._decoders[encodings.encodingCopyRect] = new CopyRectDecoder();
+        this._decoders[encodings.encodingRRE] = new RREDecoder();
+        this._decoders[encodings.encodingHextile] = new HextileDecoder();
+        this._decoders[encodings.encodingTight] = new TightDecoder(this._display);
+        this._decoders[encodings.encodingTightPNG] = new TightPNGDecoder();
+        this._decoders[encodings.encodingUDP] = new UDPDecoder();
 
         this._keyboard = new Keyboard(this._canvas, touchInput);
         this._keyboard.onkeyevent = this._handleKeyEvent.bind(this);

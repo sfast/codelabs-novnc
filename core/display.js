@@ -371,26 +371,32 @@ export default class Display {
         }
     }
 
-    blitQoi(x, y, width, height, arr, offset, fromQueue) {
-        if (this._renderQ.length !== 0 && !fromQueue) {
-            this._renderQPush({
-                'type': 'blitQ',
-                'data': arr,
-                'x': x,
-                'y': y,
-                'width': width,
-                'height': height,
-            });
+    blitQoi(x, y, w, h, img, offset, fromQueue) {
+        if (!fromQueue) {
+            createImageBitmap(img).then(
+                function(bitmap) {
+                    this._renderQPush({
+                        'type': 'blitQ',
+                        'img': bitmap,
+                        'x': x,
+                        'y': y,
+                        'width': w,
+                        'height': h,
+                    });
+                }.bind(this)
+            );
         } else {
-            window.requestAnimationFrame(() => {
-                this._targetCtx.putImageData(arr, x, y);
-            });
+            if (img.width != w || img.height != h) {
+                this._targetCtx.drawImage(img, x, y, w, h);
+            } else {
+                this._targetCtx.drawImage(img, x, y);
+            }
         }
     }
 
     drawImage(img, x, y, w, h) {
         try {
-	    if (img.width != w || img.height != h) {
+	        if (img.width != w || img.height != h) {
                 this._targetCtx.drawImage(img, x, y, w, h);
             } else {
                 this._targetCtx.drawImage(img, x, y);
@@ -486,7 +492,7 @@ export default class Display {
                     this.flip(true);
                     break;
                 case 'blitQ':
-                    this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, true);
+                    this.blitQoi(a.x, a.y, a.width, a.height, a.img, 0, true);
                     break;
                 case 'img':
                     if (a.img.complete) {

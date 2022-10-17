@@ -10,6 +10,7 @@
 
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
+
 const qoiErrors = {
     SUCCESS: 0,
     QOI_INCOMPLETE_IMAGE: 1,
@@ -34,7 +35,7 @@ export default class TightDecoder {
         }
         this._sabTest = typeof SharedArrayBuffer;
         if (this._sabTest !== 'undefined') {
-            this._threads = 40;
+            this._threads = 20;
             this._workerEnabled = false;
             this._displayGlobal = null;
             this._workers = [];
@@ -42,6 +43,7 @@ export default class TightDecoder {
             this._sabs = [];
             this._sabsR = [];
             this._arrs = [];
+            this._arrsR = [];
             this._qoiRects = [];
             this._rectQlooping = false;
             for (let i = 0; i < this._threads; i++) {
@@ -50,12 +52,14 @@ export default class TightDecoder {
                 this._sabs.push(new SharedArrayBuffer(300000));
                 this._sabsR.push(new SharedArrayBuffer(400000));
                 this._arrs.push(new Uint8Array(this._sabs[i]));
+                this._arrsR.push(new Uint8ClampedArray(this._sabsR[i]));
                 this._workers[i].onmessage = (evt) => {
                     this._isDecoded[i] = true;
                     this._workerEnabled = true;
                     if(evt.data.result == 0) {
-                        let data = new Uint8ClampedArray(this._sabsR[i].slice(0,  evt.data.length));
-                        let img = new ImageData(data.slice(), evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
+                        let data = new Uint8ClampedArray(evt.data.length);
+                        data.set(this._arrsR[i].slice(0, evt.data.length));
+                        let img = new ImageData(data, evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
                         this._displayGlobal.blitQoi(
                             evt.data.x,
                             evt.data.y,
@@ -200,35 +204,44 @@ export default class TightDecoder {
             return false;
         }
         if (this._sabTest !== 'undefined') {
-            let dataClone = new Uint8Array(data);
-            let item = {x: x,y: y,width: width,height: height,data: dataClone,depth: depth};
+            let item = {x: x,y: y,width: width,height: height,data: data,depth: depth};
             this._qoiRects.push(item);
             if (! this._rectQlooping) {
                 this._rectQlooping = true;
                 this._processRectQ();
             }
         }
+        
         if (! this._workerEnabled) {
             if (! this._displayGlobal) {
                 this._displayGlobal = display;
             }
             let pixelLength = width * height * 4;
+            let img_width = parseInt(data[7] +
+                (data[6] << 8) +
+                (data[5] << 16) +
+                (data[4] << 24), 10);
+            let img_height = parseInt(data[11] +
+                (data[10] << 8) +
+                (data[9] << 16) +
+                (data[8] << 24), 10);
             let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
             importData.set(data);
 
-            let resultData = new Uint8Array(this._instance.exports.memory.buffer,
+            let resultData = new Uint8ClampedArray(this._instance.exports.memory.buffer,
                                            importData.byteOffset + importData.length,
                                            pixelLength);
             let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
                 4, resultData);
 
             if(result == 0) {
-                display.blitImage(
+                let img = new ImageData(resultData, img_width, img_height, {colorSpace: "srgb"});
+                display.blitQoi(
                     x,
                     y,
                     width,
                     height,
-                    resultData,
+                    img,
                     0,
                     false);
             } else {
@@ -252,11 +265,11 @@ export default class TightDecoder {
                         Log.Info("QOI.decode: The pixel length is ZERO");
                         break;
                     }
-
-                    return false;
                 }
+                return false;
             }
         }
+
         return true;
     }
 

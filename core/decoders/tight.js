@@ -11,16 +11,6 @@
 import * as Log from '../util/logging.js';
 import Inflator from "../inflator.js";
 
-const qoiErrors = {
-    SUCCESS: 0,
-    QOI_INCOMPLETE_IMAGE: 1,
-    QOI_OUTPUT_CHANNELS_INVALID: 2,
-    QOI_COLORSPACE_INVALID: 3,
-    QOI_INVALID_CHANNELS: 4,
-    QOI_INVALID_SIGNATURE: 5,
-    QOI_PIXEL_LENGTH_INVALID: 6,
-};
-
 export default class TightDecoder {
     constructor(display) {
         this._ctl = null;
@@ -35,10 +25,11 @@ export default class TightDecoder {
         }
         this._sabTest = typeof SharedArrayBuffer;
         if (this._sabTest !== 'undefined') {
-            this._threads = 40;
+            this._threads = 8;
             this._workerEnabled = false;
             this._displayGlobal = display;
             this._workers = [];
+            this._availableWorkers = [];
             this._isDecoded = [];
             this._sabs = [];
             this._sabsR = [];
@@ -48,18 +39,21 @@ export default class TightDecoder {
             this._rectQlooping = false;
             for (let i = 0; i < this._threads; i++) {
                 this._workers.push(new Worker("/core/decoders/qoi/decoder.js"));
+                this._availableWorkers.push(i);
                 this._isDecoded.push(true);
                 this._sabs.push(new SharedArrayBuffer(300000));
                 this._sabsR.push(new SharedArrayBuffer(400000));
                 this._arrs.push(new Uint8Array(this._sabs[i]));
                 this._arrsR.push(new Uint8ClampedArray(this._sabsR[i]));
                 this._workers[i].onmessage = (evt) => {
-                    this._isDecoded[i] = true;
-                    this._workerEnabled = true;
+                    //this._isDecoded[i] = true;
+                    //this._workerEnabled = true;
+                    this._availableWorkers.push(i);
                     if(evt.data.result == 0) {
                         let data = new Uint8ClampedArray(evt.data.length);
                         data.set(this._arrsR[i].slice(0, evt.data.length));
                         let img = new ImageData(data, evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
+                        
                         this._displayGlobal.blitQoi(
                             evt.data.x,
                             evt.data.y,
@@ -67,7 +61,10 @@ export default class TightDecoder {
                             evt.data.height,
                             img,
                             0,
-                            false);
+                            evt.data.frame_id,
+                            false
+                        );
+                        this._processRectQ();
                     }
                 };
             }
@@ -85,7 +82,7 @@ export default class TightDecoder {
 
     }
 
-    decodeRect(x, y, width, height, sock, display, depth) {
+    decodeRect(x, y, width, height, sock, display, depth, frame_id) {
         if (this._ctl === null) {
             if (sock.rQwait("TIGHT compression-control", 1)) {
                 return false;
@@ -109,22 +106,22 @@ export default class TightDecoder {
 
         if (this._ctl === 0x08) {
             ret = this._fillRect(x, y, width, height,
-                                 sock, display, depth);
+                                 sock, display, depth, frame_id);
         } else if (this._ctl === 0x09) {
             ret = this._jpegRect(x, y, width, height,
-                                 sock, display, depth);
+                                 sock, display, depth, frame_id);
         } else if (this._ctl === 0x0A) {
             ret = this._pngRect(x, y, width, height,
-                                sock, display, depth);
+                                sock, display, depth, frame_id);
         } else if ((this._ctl & 0x08) == 0) {
             ret = this._basicRect(this._ctl, x, y, width, height,
-                                  sock, display, depth);
+                                  sock, display, depth, frame_id);
         } else if (this._ctl === 0x0B) {
             ret = this._webpRect(x, y, width, height,
-                                sock, display, depth);
+                                sock, display, depth, frame_id);
         } else if (this._ctl === 0x0C) {
             ret = this._qoiRect(x, y, width, height,
-                                sock, display, depth);
+                                sock, display, depth, frame_id);
         } else {
             throw new Error("Illegal tight compression received (ctl: " +
                                    this._ctl + ")");
@@ -137,7 +134,7 @@ export default class TightDecoder {
         return ret;
     }
 
-    _fillRect(x, y, width, height, sock, display, depth) {
+    _fillRect(x, y, width, height, sock, display, depth, frame_id) {
         if (sock.rQwait("TIGHT", 3)) {
             return false;
         }
@@ -146,153 +143,74 @@ export default class TightDecoder {
         const rQ = sock.rQ;
 
         display.fillRect(x, y, width, height,
-                         [rQ[rQi], rQ[rQi + 1], rQ[rQi + 2]], false);
+                         [rQ[rQi], rQ[rQi + 1], rQ[rQi + 2]], frame_id, false);
         sock.rQskipBytes(3);
 
         return true;
     }
 
-    _jpegRect(x, y, width, height, sock, display, depth) {
+    _jpegRect(x, y, width, height, sock, display, depth, frame_id) {
         let data = this._readData(sock);
         if (data === null) {
             return false;
         }
 
-        display.imageRect(x, y, width, height, "image/jpeg", data);
+        display.imageRect(x, y, width, height, "image/jpeg", data, frame_id);
 
         return true;
     }
 
-    _webpRect(x, y, width, height, sock, display, depth) {
+    _webpRect(x, y, width, height, sock, display, depth, frame_id) {
         let data = this._readData(sock);
         if (data === null) {
             return false;
         }
 
-        display.imageRect(x, y, width, height, "image/webp", data);
+        display.imageRect(x, y, width, height, "image/webp", data, frame_id);
 
         return true;
     }
 
     _processRectQ() {
-        for (let ri in this._qoiRects) {
-            workerLoop:
-            for (let i = 0; i < this._threads; i++) {
-                if (this._isDecoded[i] == true) {
-                    this._isDecoded[i] = false;
-                    this._arrs[i].set(this._qoiRects[ri].data);
-                    this._workers[i].postMessage({
-                        length: this._qoiRects[ri].data.length,
-                        x: this._qoiRects[ri].x,
-                        y: this._qoiRects[ri].y,
-                        width: this._qoiRects[ri].width,
-                        height: this._qoiRects[ri].height,
-                        depth: this._qoiRects[ri].depth,
-                        sab: this._sabs[i],
-                        sabR: this._sabsR[i]});
-                    delete this._qoiRects[ri];
-                    break workerLoop;
-                }
-            }
+        while (this._availableWorkers.length > 0 && this._qoiRects.length > 0) {
+            let i = this._availableWorkers.pop();
+            let worker = this._workers[i];
+            let rect = this._qoiRects.shift();
+            this._arrs[i].set(rect.data);
+            worker.postMessage({
+                length: rect.data.length,
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+                depth: rect.depth,
+                sab: this._sabs[i],
+                sabR: this._sabsR[i],
+                frame_id: rect.frame_id
+            });
         }
-        this._rectQlooping = false;
     }
 
-    _qoiRect(x, y, width, height, sock, display, depth) {
+    _qoiRect(x, y, width, height, sock, display, depth, frame_id) {
         let data = this._readData(sock);
         if (data === null) {
             return false;
         }
-        let queued = false;
+
         if (this._sabTest !== 'undefined') {
-            /*let item = {x: x,y: y,width: width,height: height,data: data,depth: depth};
+            let item = {x: x,y: y,width: width,height: height,data: data,depth: depth, frame_id: frame_id};
             this._qoiRects.push(item);
-            if (! this._rectQlooping) {
-                this._rectQlooping = true;
-                this._processRectQ();
-            }*/
-            for (let i = 0; i < this._threads; i++) {
-                if (this._isDecoded[i] == true) {
-                    this._isDecoded[i] = false;
-                    this._arrs[i].set(data);
-                    this._workers[i].postMessage({
-                        length: data.length,
-                        x: x,
-                        y: y,
-                        width: width,
-                        height: height,
-                        depth: depth,
-                        sab: this._sabs[i],
-                        sabR: this._sabsR[i]});
-                    queued = true;
-                }
-                
-            }
-        }
-        
-        if (!queued) {
-            let pixelLength = width * height * 4;
-            let img_width = parseInt(data[7] +
-                (data[6] << 8) +
-                (data[5] << 16) +
-                (data[4] << 24), 10);
-            let img_height = parseInt(data[11] +
-                (data[10] << 8) +
-                (data[9] << 16) +
-                (data[8] << 24), 10);
-            let importData = new Uint8Array(this._instance.exports.memory.buffer, 0, data.length);
-            importData.set(data);
-
-            let resultData = new Uint8ClampedArray(this._instance.exports.memory.buffer,
-                                           importData.byteOffset + importData.length,
-                                           pixelLength);
-            let result = this._instance.exports.decodeQOI(importData, 0, importData.length,
-                4, resultData);
-
-            if(result == 0) {
-                let img = new ImageData(resultData, img_width, img_height, {colorSpace: "srgb"});
-                display.blitQoi(
-                    x,
-                    y,
-                    width,
-                    height,
-                    img,
-                    0,
-                    false);
-            } else {
-                switch (result) {
-                    case qoiErrors.QOI_INCOMPLETE_IMAGE: {
-                        Log.Info('QOI.decode: Incomplete image');
-                        break;
-                    } case qoiErrors.QOI_OUTPUT_CHANNELS_INVALID: {
-                        Log.Info("QOI.decode: The number of channels for the output is invalid");
-                        break;
-                    } case qoiErrors.QOI_COLORSPACE_INVALID: {
-                        Log.Info("QOI.decode: The colorspace declared in the file is invalid");
-                        break;
-                    } case qoiErrors.QOI_INVALID_CHANNELS: {
-                        Log.Info("QOI.decode: The number of channels declared in the file is invalid");
-                        break;
-                    } case qoiErrors.QOI_INVALID_SIGNATURE: {
-                        Log.Info("QOI.decode: The signature of the QOI file is invalid");
-                        break;
-                    } case qoiErrors.QOI_PIXEL_LENGTH_INVALID: {
-                        Log.Info("QOI.decode: The pixel length is ZERO");
-                        break;
-                    }
-                }
-                return false;
-            }
+            this._processRectQ();
         }
 
         return true;
     }
 
-    _pngRect(x, y, width, height, sock, display, depth) {
+    _pngRect(x, y, width, height, sock, display, depth, frame_id) {
         throw new Error("PNG received in standard Tight rect");
     }
 
-    _basicRect(ctl, x, y, width, height, sock, display, depth) {
+    _basicRect(ctl, x, y, width, height, sock, display, depth, frame_id) {
         if (this._filter === null) {
             if (ctl & 0x4) {
                 if (sock.rQwait("TIGHT", 1)) {
@@ -313,15 +231,15 @@ export default class TightDecoder {
         switch (this._filter) {
             case 0: // CopyFilter
                 ret = this._copyFilter(streamId, x, y, width, height,
-                                       sock, display, depth);
+                                       sock, display, depth, frame_id);
                 break;
             case 1: // PaletteFilter
                 ret = this._paletteFilter(streamId, x, y, width, height,
-                                          sock, display, depth);
+                                          sock, display, depth, frame_id);
                 break;
             case 2: // GradientFilter
                 ret = this._gradientFilter(streamId, x, y, width, height,
-                                           sock, display, depth);
+                                           sock, display, depth, frame_id);
                 break;
             default:
                 throw new Error("Illegal tight filter received (ctl: " +
@@ -335,7 +253,7 @@ export default class TightDecoder {
         return ret;
     }
 
-    _copyFilter(streamId, x, y, width, height, sock, display, depth) {
+    _copyFilter(streamId, x, y, width, height, sock, display, depth, frame_id) {
         const uncompressedSize = width * height * 3;
         let data;
 
@@ -368,12 +286,12 @@ export default class TightDecoder {
             rgbx[i + 3] = 255;  // Alpha
         }
 
-        display.blitImage(x, y, width, height, rgbx, 0, false);
+        display.blitImage(x, y, width, height, rgbx, 0, frame_id, false);
 
         return true;
     }
 
-    _paletteFilter(streamId, x, y, width, height, sock, display, depth) {
+    _paletteFilter(streamId, x, y, width, height, sock, display, depth, frame_id) {
         if (this._numColors === 0) {
             if (sock.rQwait("TIGHT palette", 1)) {
                 return false;
@@ -421,9 +339,9 @@ export default class TightDecoder {
 
         // Convert indexed (palette based) image data to RGB
         if (this._numColors == 2) {
-            this._monoRect(x, y, width, height, data, this._palette, display);
+            this._monoRect(x, y, width, height, data, this._palette, display, frame_id);
         } else {
-            this._paletteRect(x, y, width, height, data, this._palette, display);
+            this._paletteRect(x, y, width, height, data, this._palette, display, frame_id);
         }
 
         this._numColors = 0;
@@ -431,7 +349,7 @@ export default class TightDecoder {
         return true;
     }
 
-    _monoRect(x, y, width, height, data, palette, display) {
+    _monoRect(x, y, width, height, data, palette, display, frame_id) {
         // Convert indexed (palette based) image data to RGB
         // TODO: reduce number of calculations inside loop
         const dest = this._getScratchBuffer(width * height * 4);
@@ -461,10 +379,10 @@ export default class TightDecoder {
             }
         }
 
-        display.blitImage(x, y, width, height, dest, 0, false);
+        display.blitImage(x, y, width, height, dest, 0, frame_id, false);
     }
 
-    _paletteRect(x, y, width, height, data, palette, display) {
+    _paletteRect(x, y, width, height, data, palette, display, frame_id) {
         // Convert indexed (palette based) image data to RGB
         const dest = this._getScratchBuffer(width * height * 4);
         const total = width * height * 4;
@@ -476,10 +394,10 @@ export default class TightDecoder {
             dest[i + 3] = 255;
         }
 
-        display.blitImage(x, y, width, height, dest, 0, false);
+        display.blitImage(x, y, width, height, dest, 0, frame_id, false);
     }
 
-    _gradientFilter(streamId, x, y, width, height, sock, display, depth) {
+    _gradientFilter(streamId, x, y, width, height, sock, display, depth, frame_id) {
         throw new Error("Gradient filter not implemented");
     }
 

@@ -175,12 +175,14 @@ export default class RFB extends EventTargetMixin {
         this._decoders = {};
 
         this._FBU = {
-            rects: 0,
+            rects: 0, // current rect number
             x: 0,
             y: 0,
             width: 0,
             height: 0,
             encoding: null,
+            frame_id: 0,
+            rect_total: 0, //Total rects in frame
         };
 
         // Mouse state
@@ -3071,11 +3073,11 @@ export default class RFB extends EventTargetMixin {
             encoding: parseInt((data[8] << 24) + (data[9] << 16) +
                                             (data[10] << 8) + data[11], 10)
         };
-
+        
         switch (frame.encoding) {
             case encodings.pseudoEncodingLastRect:
                 if (document.visibilityState !== "hidden") {
-                    this._display.flip();
+                    this._display.flip(false);
                     this._udpBuffer.clear();
                 }
                 break;
@@ -3183,6 +3185,9 @@ export default class RFB extends EventTargetMixin {
                 this._display.flush();
                 return false;
             }
+
+            this._FBU.frame_id++;
+            this._FBU.rect_total = 0;
         }
 
         while (this._FBU.rects > 0) {
@@ -3203,11 +3208,12 @@ export default class RFB extends EventTargetMixin {
                 return false;
             }
 
+            this._FBU.rect_total++;
             this._FBU.rects--;
             this._FBU.encoding = null;
         }
 
-        this._display.flip();
+        this._display.flip(false, this._FBU.frame_id, this._FBU.rect_total);
 
         return true;  // We finished this FBU
     }
@@ -3519,7 +3525,7 @@ export default class RFB extends EventTargetMixin {
             return false;
         }
 
-        try {
+        //try {
             if (this._transitConnectionState == this.TransitConnectionStates.Udp || this._transitConnectionState == this.TransitConnectionStates.Failure) {
                 if (this._transitConnectionState == this.TransitConnectionStates.Udp) {
                     Log.Warn("Implicit UDP Transit Failure, TCP rects recieved while in UDP mode.")
@@ -3542,11 +3548,11 @@ export default class RFB extends EventTargetMixin {
             return decoder.decodeRect(this._FBU.x, this._FBU.y,
                                       this._FBU.width, this._FBU.height,
                                       this._sock, this._display,
-                                      this._fbDepth);
-        } catch (err) {
-	    this._fail("Error decoding rect: " + err);
-            return false;
-        }
+                                      this._fbDepth, this._FBU.frame_id);
+        //} catch (err) {
+	    //this._fail("Error decoding rect: " + err);
+        //    return false;
+        //}
     }
 
     _updateContinuousUpdates() {

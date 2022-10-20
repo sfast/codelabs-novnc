@@ -321,7 +321,8 @@ async function run() {
         width: evt.data.width,
         height: evt.data.height,
         x: evt.data.x,
-        y: evt.data.y
+        y: evt.data.y,
+        frame_id: evt.data.frame_id
       });
     } catch (err) {
       console.log(err)

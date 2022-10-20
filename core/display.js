@@ -15,6 +15,20 @@ export default class Display {
         this._renderQ = [];  // queue drawing actions for in-oder rendering
         this._currentFrame = [];
         this._nextFrame = [];
+        /*
+        For performance reasons we use a multi dimensional array
+        1st Dimension of Array Represents Frames, each element is a Frame
+        2nd Dimension contains 2 elements
+            1 - int FrameID
+            2 - int Rect Count
+            3 - Array of Rect objects
+        
+        Only allow 3 frames in the queue, can expand later if needed
+        */
+        this._asyncFrameQueue = [];
+        this._maxAsyncFrameQueue = 3;
+        this._clearAsyncQueue();
+
         this._flushing = false;
 
         // the full frame buffer (logical canvas) size
@@ -52,12 +66,17 @@ export default class Display {
         // performance metrics, try to calc a fps equivelant
         this._flipCnt = 0;
         this._lastFlip = Date.now();
+        this._droppedFrames = 0;
+        this._droppedRects = 0;
         setInterval(function() {
             let delta = Date.now() - this._lastFlip;
+            this._flipCnt -= this._droppedFrames;
             if (delta > 0) {
                 this._fps = (this._flipCnt / (delta / 1000)).toFixed(2);
             }
+            Log.Debug('Dropped frames per second: ' + (this._droppedFrames / (delta / 1000)).toFixed(2));
             this._flipCnt = 0;
+            this._droppedFrames = 0;
             this._lastFlip = Date.now();
         }.bind(this), 5000);
 
@@ -150,7 +169,7 @@ export default class Display {
         }
         Log.Debug("viewportChange deltaX: " + deltaX + ", deltaY: " + deltaY);
 
-        this.flip();
+        //this.flip();  //TODO: need to come back and look into implications of direct to canvas to resizing
     }
 
     viewportChangeSize(width, height) {
@@ -186,7 +205,7 @@ export default class Display {
             // The position might need to be updated if we've grown
             this.viewportChangePos(0, 0);
 
-            this.flip();
+            //this.flip(); //TODO: need to come back and look into implications of direct to canvas to resizing
 
             // Update the visible size of the target canvas
             this._rescale(this._scale);
@@ -243,54 +262,36 @@ export default class Display {
     }
 
     // rendering canvas
-    flip(fromQueue) {
-        if (!fromQueue) {
-            this._renderQPush({
-                'type': 'flip'
-            });
-        } else {
-            for (let i = 0; i < this._currentFrame.length; i++) {
-                const a = this._currentFrame[i];
-                switch (a.type) {
-                    case 'copy':
-                        this.copyImage(a.oldX, a.oldY, a.x, a.y, a.width, a.height, true);
-                        break;
-                    case 'fill':
-                        this.fillRect(a.x, a.y, a.width, a.height, a.color, true);
-                        break;
-                    case 'blit':
-                        this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, true);
-                        break;
-                    case 'img':
-                        this.drawImage(a.img, a.x, a.y, a.width, a.height);
-                        break;
-                }
-            }
-            this._flipCnt += 1;
-        }
+    flip(fromQueue, frame_id, rect_cnt) { //TODO: remove fromQueeu
+        this._asyncRenderQPush({
+            'type': 'flip',
+            'frame_id': frame_id,
+            'rect_cnt': rect_cnt
+        });
     }
 
     pending() {
-        return this._renderQ.length > 0;
+        //is the slot in the queue for the newest frame in use
+        return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0;
     }
 
     flush() {
-        if (this._renderQ.length === 0) {
-            this.onflush();
-        } else {
-            this._flushing = true;
-        }
+        //throw away the oldest frame
+        this._asyncFrameQueue[this._asyncFrameQueue.length - 1] = [ 0, 0, [] ];
+        this._droppedFrames++;
+        this.onflush();
     }
 
-    fillRect(x, y, width, height, color, fromQueue) {
+    fillRect(x, y, width, height, color, frame_id, fromQueue) {
         if (!fromQueue) {
-            this._renderQPush({
+            this._asyncRenderQPush({
                 'type': 'fill',
                 'x': x,
                 'y': y,
                 'width': width,
                 'height': height,
-                'color': color
+                'color': color,
+                'frame_id': frame_id
             });
         } else {
             this._setFillColor(color);
@@ -298,9 +299,9 @@ export default class Display {
         }
     }
 
-    copyImage(oldX, oldY, newX, newY, w, h, fromQueue) {
+    copyImage(oldX, oldY, newX, newY, w, h, frame_id, fromQueue) {
         if (!fromQueue) {
-            this._renderQPush({
+            this._asyncRenderQPush({
                 'type': 'copy',
                 'oldX': oldX,
                 'oldY': oldY,
@@ -308,6 +309,7 @@ export default class Display {
                 'y': newY,
                 'width': w,
                 'height': h,
+                'frame_id': frame_id
             });
         } else {
             // Due to this bug among others [1] we need to disable the image-smoothing to
@@ -328,7 +330,7 @@ export default class Display {
         }
     }
 
-    imageRect(x, y, width, height, mime, arr) {
+    imageRect(x, y, width, height, mime, arr, frame_id) {
         /* The internal logic cannot handle empty images, so bail early */
         if ((width === 0) || (height === 0)) {
             return;
@@ -336,30 +338,32 @@ export default class Display {
         const img = new Image();
         img.src = "data: " + mime + ";base64," + Base64.encode(arr);
 
-        this._renderQPush({
+        this._asyncRenderQPush({
             'type': 'img',
             'img': img,
             'x': x,
             'y': y,
             'width': width,
-            'height': height
+            'height': height,
+            'frame_id': frame_id
         });
     }
 
-    blitImage(x, y, width, height, arr, offset, fromQueue) {
+    blitImage(x, y, width, height, arr, offset, frame_id, fromQueue) {
         if (!fromQueue) {
             // NB(directxman12): it's technically more performant here to use preallocated arrays,
             // but it's a lot of extra work for not a lot of payoff -- if we're using the render queue,
             // this probably isn't getting called *nearly* as much
             const newArr = new Uint8Array(width * height * 4);
             newArr.set(new Uint8Array(arr.buffer, 0, newArr.length));
-            this._renderQPush({
+            this._asyncRenderQPush({
                 'type': 'blit',
                 'data': newArr,
                 'x': x,
                 'y': y,
                 'width': width,
                 'height': height,
+                'frame_id': frame_id
             });
         } else {
             // NB(directxman12): arr must be an Type Array view
@@ -371,17 +375,36 @@ export default class Display {
         }
     }
 
-    blitQoi(x, y, w, h, img, offset, fromQueue) {
+    blitQoi(x, y, width, height, arr, offset, frame_id, fromQueue) {
+        if (!fromQueue) {
+            this._asyncRenderQPush({
+                'type': 'blitQ',
+                'data': arr,
+                'x': x,
+                'y': y,
+                'width': width,
+                'height': height,
+                'frame_id': frame_id
+            });
+        } else {
+            //window.requestAnimationFrame(() => {
+              this._targetCtx.putImageData(arr, x, y);
+            //});
+        }
+    }
+
+    blitQoi2(x, y, w, h, img, offset, frame_id, fromQueue) {
         if (!fromQueue) {
             createImageBitmap(img).then(
                 function(bitmap) {
-                    this._renderQPush({
+                    this._asyncRenderQPush({
                         'type': 'blitQ',
                         'img': bitmap,
                         'x': x,
                         'y': y,
                         'width': w,
                         'height': h,
+                        'frame_id': frame_id
                     });
                 }.bind(this)
             );
@@ -428,6 +451,98 @@ export default class Display {
     }
 
     // ===== PRIVATE METHODS =====
+
+    /*
+    For decoders that are asynchronous in nature, rects come in out of order
+    */
+    _asyncRenderQPush(rect) {
+        let frameIx = -1;
+        let oldestFrameID = Number.MAX_SAFE_INTEGER;
+        let newestFrameID = 0;
+        for (let i=0; i<this._maxAsyncFrameQueue; i++) {
+            if (rect.frame_id == this._asyncFrameQueue[i][0]) {
+                this._asyncFrameQueue[i][2].push(rect);
+                frameIx = i;
+                break;
+            } else if (this._asyncFrameQueue[i][0] == 0) {
+                this._asyncFrameQueue[i][0] = rect.frame_id;
+                this._asyncFrameQueue[i][1] = 0;
+                this._asyncFrameQueue[i][2].push(rect);
+                frameIx = i;
+                break;
+            }
+            oldestFrameID = Math.min(oldestFrameID, this._asyncFrameQueue[i][0]);
+            newestFrameID = Math.max(newestFrameID, this._asyncFrameQueue[i][0]);
+        }
+
+        if (frameIx >= 0) {
+            if (rect.type == "flip") {
+                this._asyncFrameQueue[frameIx][1] = rect.rect_cnt;
+            }
+
+            if (this._asyncFrameQueue[frameIx][1] == this._asyncFrameQueue[frameIx][2].length) {
+                    this._pushAsyncFrame(frameIx);
+                }
+        } else {
+            if (rect.frame_id < oldestFrameID) {
+                //rect is older than any frame in the queue, drop it
+                this._droppedRects++;
+                return;
+            } else if (rect.frame_id > newestFrameID) {
+                //frame is newer than any frame in the queue, drop old frames
+                this._asyncFrameQueue.shift();
+                let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
+                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ] ]);
+            }
+        }
+        
+    }
+
+    _clearAsyncQueue() {
+        this._droppedFrames += this._asyncFrameQueue.length;
+
+        this._asyncFrameQueue = [];
+        for (let i=0; i<this._maxAsyncFrameQueue; i++) {
+            this._asyncFrameQueue.push([ 0, 0, [] ])
+        }
+    }
+
+    //push a specific frame from the async buffer to the live queue
+    //it will then remove the frame from the asycn queue 
+    //frames older than the requested frame will be dropped
+    _pushAsyncFrame(frameQueueIx) {
+        let frame = this._asyncFrameQueue[frameQueueIx][2];
+        this._droppedFrames += frameQueueIx; //do not count index 0 as a dropped frame
+        //remove the processed frames and any older frames
+        for (let i=0; i <= frameQueueIx; i++) {
+            this._asyncFrameQueue.shift();
+            this._asyncFrameQueue.push([ 0, 0, [] ]);
+        }
+        //render the selected frame
+        //window.requestAnimationFrame(() => {
+        for (let i = 0; i < frame.length; i++) {
+            const a = frame[i];
+            switch (a.type) {
+                case 'copy':
+                    this.copyImage(a.oldX, a.oldY, a.x, a.y, a.width, a.height, a.frame_id, true);
+                    break;
+                case 'fill':
+                    this.fillRect(a.x, a.y, a.width, a.height, a.color, a.frame_id, true);
+                    break;
+                case 'blit':
+                    this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
+                    break;
+                case 'blitQ':
+                    this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
+                    break;
+                case 'img':
+                    this.drawImage(a.img, a.x, a.y, a.width, a.height);
+                    break;
+            }
+        }
+        //});
+        this._flipCnt += 1;
+    }
 
     _rescale(factor) {
         this._scale = factor;
@@ -492,7 +607,7 @@ export default class Display {
                     this.flip(true);
                     break;
                 case 'blitQ':
-                    this.blitQoi(a.x, a.y, a.width, a.height, a.img, 0, true);
+                    this._nextFrame.push(a);
                     break;
                 case 'img':
                     if (a.img.complete) {

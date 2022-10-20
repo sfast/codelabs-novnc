@@ -3203,7 +3203,8 @@ export default class RFB extends EventTargetMixin {
                 this._FBU.encoding = parseInt((hdr[8] << 24) + (hdr[9] << 16) +
                                               (hdr[10] << 8) + hdr[11], 10);
             }
-
+            
+            
             if (!this._handleRect()) {
                 return false;
             }
@@ -3221,7 +3222,11 @@ export default class RFB extends EventTargetMixin {
     _handleRect() {
         switch (this._FBU.encoding) {
             case encodings.pseudoEncodingLastRect:
+                //this._FBU.rect_total++; //Must include the last rect itself
+                //this._display.flip(false, this._FBU.frame_id, this._FBU.rect_total);
                 this._FBU.rects = 1; // Will be decreased when we return
+                //this._FBU.rect_total = 0;
+                //this._FBU.frame_id++;
                 return true;
 
             case encodings.pseudoEncodingVMwareCursor:

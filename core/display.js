@@ -277,7 +277,8 @@ export default class Display {
 
     flush() {
         //throw away the oldest frame
-        this._asyncFrameQueue[this._asyncFrameQueue.length - 1] = [ 0, 0, [] ];
+        this._asyncFrameQueue.shift();
+        this._asyncFrameQueue.push([ 0, 0, [] ]);
         this._droppedFrames++;
         this.onflush();
     }

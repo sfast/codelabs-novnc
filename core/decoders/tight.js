@@ -198,7 +198,8 @@ export default class TightDecoder {
         }
 
         if (this._sabTest !== 'undefined') {
-            let item = {x: x,y: y,width: width,height: height,data: data,depth: depth, frame_id: frame_id};
+            let dataClone = new Uint8Array(data);
+            let item = {x: x,y: y,width: width,height: height,data: dataClone,depth: depth, frame_id: frame_id};
             this._qoiRects.push(item);
             this._processRectQ();
         }

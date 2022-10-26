@@ -9,24 +9,26 @@
 import * as Log from './util/logging.js';
 import Base64 from "./base64.js";
 import { toSigned32bit } from './util/int.js';
+import { isWindows } from './util/browser.js';
 
 export default class Display {
     constructor(target) {
         this._renderQ = [];  // queue drawing actions for in-oder rendering
         this._currentFrame = [];
         this._nextFrame = [];
+
         /*
         For performance reasons we use a multi dimensional array
         1st Dimension of Array Represents Frames, each element is a Frame
-        2nd Dimension contains 2 elements
-            1 - int FrameID
-            2 - int Rect Count
-            3 - Array of Rect objects
-        
+        2nd Dimension contains 4 elements
+            0 - int, FrameID
+            1 - int, Rect Count
+            2 - Array of Rect objects
+            3 - bool, is the frame complete
         Only allow 3 frames in the queue, can expand later if needed
         */
         this._asyncFrameQueue = [];
-        this._maxAsyncFrameQueue = 3;
+        this._maxAsyncFrameQueue = 5;
         this._clearAsyncQueue();
 
         this._flushing = false;
@@ -70,11 +72,10 @@ export default class Display {
         this._droppedRects = 0;
         setInterval(function() {
             let delta = Date.now() - this._lastFlip;
-            this._flipCnt -= this._droppedFrames;
             if (delta > 0) {
                 this._fps = (this._flipCnt / (delta / 1000)).toFixed(2);
             }
-            Log.Debug('Dropped frames per second: ' + (this._droppedFrames / (delta / 1000)).toFixed(2));
+            Log.Info('Dropped frames per second: ' + (this._droppedFrames / (delta / 1000)).toFixed(2));
             this._flipCnt = 0;
             this._droppedFrames = 0;
             this._lastFlip = Date.now();
@@ -272,13 +273,13 @@ export default class Display {
 
     pending() {
         //is the slot in the queue for the newest frame in use
-        return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0;
+        return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0 || this._currentAsyncFrame;
     }
 
     flush() {
         //throw away the oldest frame
         this._asyncFrameQueue.shift();
-        this._asyncFrameQueue.push([ 0, 0, [] ]);
+        this._asyncFrameQueue.push([ 0, 0, [], false ]);
         this._droppedFrames++;
         this.onflush();
     }
@@ -469,6 +470,7 @@ export default class Display {
                 this._asyncFrameQueue[i][0] = rect.frame_id;
                 this._asyncFrameQueue[i][1] = 0;
                 this._asyncFrameQueue[i][2].push(rect);
+                this._asyncFrameQueue[i][3] = false;
                 frameIx = i;
                 break;
             }
@@ -482,7 +484,9 @@ export default class Display {
             }
 
             if (this._asyncFrameQueue[frameIx][1] == this._asyncFrameQueue[frameIx][2].length) {
-                    this._pushAsyncFrame(frameIx);
+                    this._asyncFrameQueue[frameIx][3] = true; //frame complete
+                    this._processAsyncFrameQueue()
+                    //window.requestAnimationFrame(() => { this._pushAsyncFrame(frameIx); });
                 }
         } else {
             if (rect.frame_id < oldestFrameID) {
@@ -493,7 +497,8 @@ export default class Display {
                 //frame is newer than any frame in the queue, drop old frames
                 this._asyncFrameQueue.shift();
                 let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
-                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ] ]);
+                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ], (rect_cnt == 1) ]);
+                this._droppedFrames++;
             }
         }
         
@@ -504,24 +509,44 @@ export default class Display {
 
         this._asyncFrameQueue = [];
         for (let i=0; i<this._maxAsyncFrameQueue; i++) {
-            this._asyncFrameQueue.push([ 0, 0, [] ])
+            this._asyncFrameQueue.push([ 0, 0, [], false ])
         }
     }
+
+    _processAsyncFrameQueue() {
+        for (let i=0; i<this._maxAsyncFrameQueue; i++) {
+            if (this._asyncFrameQueue[i][3]) {
+                for (let x=0; x<this._asyncFrameQueue[i][2].length; x++) {
+                    if (this._asyncFrameQueue[i][2][x].type == 'img' && !this._asyncFrameQueue[i][2][x].img.complete) {
+                        this._asyncFrameQueue[i][2][x].img.addEventListener('load', () => { this._processAsyncFrameQueue(); });
+                        return;
+                    }
+                }
+
+                window.requestAnimationFrame(() => {
+                    this._pushAsyncFrame(i);
+                });
+            }
+        }
+    }
+
 
     //push a specific frame from the async buffer to the live queue
     //it will then remove the frame from the asycn queue 
     //frames older than the requested frame will be dropped
     _pushAsyncFrame(frameQueueIx) {
         let frame = this._asyncFrameQueue[frameQueueIx][2];
-        this._droppedFrames += frameQueueIx; //do not count index 0 as a dropped frame
+        this._droppedFrames += frameQueueIx;
+            
         //remove the processed frames and any older frames
         for (let i=0; i <= frameQueueIx; i++) {
             this._asyncFrameQueue.shift();
-            this._asyncFrameQueue.push([ 0, 0, [] ]);
+            this._asyncFrameQueue.push([ 0, 0, [], false ]);
         }
+        
         //render the selected frame
-        //window.requestAnimationFrame(() => {
         for (let i = 0; i < frame.length; i++) {
+            
             const a = frame[i];
             switch (a.type) {
                 case 'copy':
@@ -541,7 +566,6 @@ export default class Display {
                     break;
             }
         }
-        //});
         this._flipCnt += 1;
     }
 

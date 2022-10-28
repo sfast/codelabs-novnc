@@ -17,6 +17,11 @@ export default class Display {
         this._currentFrame = [];
         this._nextFrame = [];
 
+        // TODO: For testing, remove me
+        this._copyRects = 0;
+        this._fillRects = 0;
+        this._blitRects = 0;
+
         /*
         For performance reasons we use a multi dimensional array
         1st Dimension of Array Represents Frames, each element is a Frame
@@ -28,7 +33,7 @@ export default class Display {
         Only allow 3 frames in the queue, can expand later if needed
         */
         this._asyncFrameQueue = [];
-        this._maxAsyncFrameQueue = 5;
+        this._maxAsyncFrameQueue = 3;
         this._clearAsyncQueue();
 
         this._flushing = false;
@@ -70,14 +75,18 @@ export default class Display {
         this._lastFlip = Date.now();
         this._droppedFrames = 0;
         this._droppedRects = 0;
+        this._missingRectCnt = 0; //frames missing a rect count
         setInterval(function() {
             let delta = Date.now() - this._lastFlip;
             if (delta > 0) {
                 this._fps = (this._flipCnt / (delta / 1000)).toFixed(2);
             }
-            Log.Info('Dropped frames per second: ' + (this._droppedFrames / (delta / 1000)).toFixed(2));
+            //Log.Info('Dropped frames per second: ' + (this._droppedFrames / (delta / 1000)).toFixed(2));
+            //TODO: Delete me
+            Log.Warn('Dropped Frames: ' + this._droppedFrames + ' Rects: ' + this._droppedRects + ' Mising Rect Cnt: ' + this._missingRectCnt);
+            Log.Warn('Rect Counts: Copy ' + this._copyRects + ', Fill ' + this._fillRects + ', Blit ' + this._blitRects);
             this._flipCnt = 0;
-            this._droppedFrames = 0;
+            //this._droppedFrames = 0;
             this._lastFlip = Date.now();
         }.bind(this), 5000);
 
@@ -93,6 +102,7 @@ export default class Display {
         // ===== EVENT HANDLERS =====
 
         this.onflush = () => {  }; // A flush request has finished
+        window.requestAnimationFrame( () => { this._pushAsyncFrame(); });
     }
 
     // ===== PROPERTIES =====
@@ -273,15 +283,22 @@ export default class Display {
 
     pending() {
         //is the slot in the queue for the newest frame in use
-        return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0 || this._currentAsyncFrame;
+        return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0;
     }
 
     flush() {
         //throw away the oldest frame
+        /*
         this._asyncFrameQueue.shift();
         this._asyncFrameQueue.push([ 0, 0, [], false ]);
         this._droppedFrames++;
         this.onflush();
+        */
+        //this._processAsyncFrameQueue(true); //Force process the oldest frame
+        this._asyncFrameComplete(0, true);
+
+        //this.onflush();
+        this._flushing = true;
     }
 
     fillRect(x, y, width, height, color, frame_id, fromQueue) {
@@ -467,10 +484,11 @@ export default class Display {
                 frameIx = i;
                 break;
             } else if (this._asyncFrameQueue[i][0] == 0) {
+                let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
                 this._asyncFrameQueue[i][0] = rect.frame_id;
-                this._asyncFrameQueue[i][1] = 0;
+                this._asyncFrameQueue[i][1] = rect_cnt;
                 this._asyncFrameQueue[i][2].push(rect);
-                this._asyncFrameQueue[i][3] = false;
+                this._asyncFrameQueue[i][3] = (rect_cnt == 1);
                 frameIx = i;
                 break;
             }
@@ -484,10 +502,11 @@ export default class Display {
             }
 
             if (this._asyncFrameQueue[frameIx][1] == this._asyncFrameQueue[frameIx][2].length) {
-                    this._asyncFrameQueue[frameIx][3] = true; //frame complete
-                    this._processAsyncFrameQueue()
-                    //window.requestAnimationFrame(() => { this._pushAsyncFrame(frameIx); });
-                }
+                this._asyncFrameComplete(frameIx);
+                    //this._asyncFrameQueue[frameIx][3] = true; //frame complete
+                    //this._processAsyncFrameQueue(false)
+                    
+            }
         } else {
             if (rect.frame_id < oldestFrameID) {
                 //rect is older than any frame in the queue, drop it
@@ -513,19 +532,58 @@ export default class Display {
         }
     }
 
-    _processAsyncFrameQueue() {
-        for (let i=0; i<this._maxAsyncFrameQueue; i++) {
-            if (this._asyncFrameQueue[i][3]) {
-                for (let x=0; x<this._asyncFrameQueue[i][2].length; x++) {
-                    if (this._asyncFrameQueue[i][2][x].type == 'img' && !this._asyncFrameQueue[i][2][x].img.complete) {
-                        this._asyncFrameQueue[i][2][x].img.addEventListener('load', () => { this._processAsyncFrameQueue(); });
-                        return;
-                    }
+    _asyncFrameComplete(frameIx, force=false) {
+        if (force) {
+            if (this._asyncFrameQueue[frameIx][1] == 0) {
+                this._missingRectCnt++;
+            } else if (this._asyncFrameQueue[frameIx][1] !== this._asyncFrameQueue[frameIx][2].length) {
+                this._droppedRects += (this._asyncFrameQueue[frameIx][1] - this._asyncFrameQueue[frameIx][2].length);
+            }
+            for (let x=0; x<this._asyncFrameQueue[frameIx][2].length; x++) {
+                if (this._asyncFrameQueue[frameIx][2][x].type == 'img' && !this._asyncFrameQueue[frameIx][2][x].img.complete) {
+                    this._asyncFrameQueue[frameIx][2][x].type = 'skip';
+                    this._droppedRects++;
+                }
+            }
+        } else {
+            for (let x=0; x<this._asyncFrameQueue[frameIx][2].length; x++) {
+                if (this._asyncFrameQueue[frameIx][2][x].type == 'img' && !this._asyncFrameQueue[frameIx][2][x].img.complete) {
+                    this._asyncFrameQueue[frameIx][2][x].img.addEventListener('load', () => { this._asyncFrameComplete(frameIx); });
+                    return;
+                }
+            }
+        }
+        this._asyncFrameQueue[frameIx][3] = true;
+    }
+
+    _processAsyncFrameQueue(force=false) {
+        for (let i=0; i<1; i++) {
+            if (this._asyncFrameQueue[i][3] || force) {
+
+
+
+
+                if (force && this._asyncFrameQueue[i][1] == 0) {
+                    this._missingRectCnt++;
+                } else if (this._asyncFrameQueue[i][1] !== this._asyncFrameQueue[i][2].length) {
+                    this._droppedRects += (this._asyncFrameQueue[i][1] - this._asyncFrameQueue[i][2].length);
                 }
 
-                window.requestAnimationFrame(() => {
-                    this._pushAsyncFrame(i);
-                });
+                for (let x=0; x<this._asyncFrameQueue[i][2].length; x++) {
+                    if (this._asyncFrameQueue[i][2][x].type == 'img' && !this._asyncFrameQueue[i][2][x].img.complete) {
+                        if (!force) {
+                            this._asyncFrameQueue[i][2][x].img.addEventListener('load', () => { this._processAsyncFrameQueue(); });
+                            return;
+                        } else {
+                            this._asyncFrameQueue[i][2][x].type = 'skip';
+                        }
+                    }
+                }
+                
+                if (this._flushing) {
+                    this._flushing = false;
+                    this.onflush();
+                }
             }
         }
     }
@@ -534,39 +592,45 @@ export default class Display {
     //push a specific frame from the async buffer to the live queue
     //it will then remove the frame from the asycn queue 
     //frames older than the requested frame will be dropped
-    _pushAsyncFrame(frameQueueIx) {
-        let frame = this._asyncFrameQueue[frameQueueIx][2];
-        this._droppedFrames += frameQueueIx;
-            
-        //remove the processed frames and any older frames
-        for (let i=0; i <= frameQueueIx; i++) {
-            this._asyncFrameQueue.shift();
+    _pushAsyncFrame() {
+        if (this._asyncFrameQueue[0][3]) {
+            let frame = this._asyncFrameQueue.shift()[2];
             this._asyncFrameQueue.push([ 0, 0, [], false ]);
-        }
-        
-        //render the selected frame
-        for (let i = 0; i < frame.length; i++) {
             
-            const a = frame[i];
-            switch (a.type) {
-                case 'copy':
-                    this.copyImage(a.oldX, a.oldY, a.x, a.y, a.width, a.height, a.frame_id, true);
-                    break;
-                case 'fill':
-                    this.fillRect(a.x, a.y, a.width, a.height, a.color, a.frame_id, true);
-                    break;
-                case 'blit':
-                    this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
-                    break;
-                case 'blitQ':
-                    this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
-                    break;
-                case 'img':
-                    this.drawImage(a.img, a.x, a.y, a.width, a.height);
-                    break;
+            //render the selected frame
+            for (let i = 0; i < frame.length; i++) {
+                
+                const a = frame[i];
+                switch (a.type) {
+                    case 'copy':
+                        this.copyImage(a.oldX, a.oldY, a.x, a.y, a.width, a.height, a.frame_id, true);
+                        this._copyRects++; //TODO: Delete me
+                        break;
+                    case 'fill':
+                        this.fillRect(a.x, a.y, a.width, a.height, a.color, a.frame_id, true);
+                        this._copyRects++; //TODO: Delete me
+                        break;
+                    case 'blit':
+                        this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
+                        this._copyRects++; //TODO: Delete me
+                        break;
+                    case 'blitQ':
+                        this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
+                        break;
+                    case 'img':
+                        this.drawImage(a.img, a.x, a.y, a.width, a.height);
+                        break;
+                }
+            }
+            this._flipCnt += 1;
+
+            if (this._flushing) {
+                this._flushing = false;
+                this.onflush();
             }
         }
-        this._flipCnt += 1;
+
+        window.requestAnimationFrame( () => { this._pushAsyncFrame(); });
     }
 
     _rescale(factor) {
@@ -621,6 +685,7 @@ export default class Display {
     }
 
     _scanRenderQ() {
+        //TODO: Remove this and everything related to it
         let ready = true;
         let before = Date.now();
         while (ready && this._renderQ.length > 0) {

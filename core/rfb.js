@@ -3209,7 +3209,7 @@ export default class RFB extends EventTargetMixin {
                 return false;
             }
 
-            this._FBU.rect_total++;
+            //this._FBU.rect_total++;
             this._FBU.rects--;
             this._FBU.encoding = null;
         }
@@ -3222,7 +3222,7 @@ export default class RFB extends EventTargetMixin {
     _handleRect() {
         switch (this._FBU.encoding) {
             case encodings.pseudoEncodingLastRect:
-                //this._FBU.rect_total++; //Must include the last rect itself
+                this._FBU.rect_total++; //Must include the last rect itself
                 //this._display.flip(false, this._FBU.frame_id, this._FBU.rect_total);
                 this._FBU.rects = 1; // Will be decreased when we return
                 //this._FBU.rect_total = 0;
@@ -3253,7 +3253,11 @@ export default class RFB extends EventTargetMixin {
                 return this._handleExtendedDesktopSize();
 
             default:
-                return this._handleDataRect();
+                if (this._handleDataRect()) {
+                    this._FBU.rect_total++;
+                    return true;
+                } 
+                return false;
         }
     }
 

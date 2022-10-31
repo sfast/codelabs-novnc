@@ -490,7 +490,12 @@ export default class RFB extends EventTargetMixin {
         if(this._enableQOI === enabled) {
             return;
         }
-
+        if (enabled) {
+            if (!this._decoders[encodings.encodingTight].enableQOI()) {
+                //enabling qoi failed
+                return;
+            }
+        }
         this._enableQOI = enabled;
         this._pendingApplyEncodingChanges = true;
     }
@@ -2495,10 +2500,6 @@ export default class RFB extends EventTargetMixin {
         return true;
     }
 
-    _hasQOI() {
-        return this.enableQOI;
-    }
-
     _hasWebp() {
         /*
         return new Promise(res => {
@@ -2555,7 +2556,7 @@ export default class RFB extends EventTargetMixin {
         encs.push(encodings.pseudoEncodingExtendedClipboard);
         if (this._hasWebp())
             encs.push(encodings.pseudoEncodingWEBP);
-        if (this._hasQOI())
+        if (this._enableQOI)
             encs.push(encodings.pseudoEncodingQOI);
 
         // kasm settings; the server may be configured to ignore these
@@ -3077,7 +3078,7 @@ export default class RFB extends EventTargetMixin {
         switch (frame.encoding) {
             case encodings.pseudoEncodingLastRect:
                 if (document.visibilityState !== "hidden") {
-                    this._display.flip(false);
+                    this._display.flip(false); //TODO: UDP is now broken, flip needs rect count and frame number
                     this._udpBuffer.clear();
                 }
                 break;
@@ -3209,24 +3210,22 @@ export default class RFB extends EventTargetMixin {
                 return false;
             }
 
-            //this._FBU.rect_total++;
             this._FBU.rects--;
             this._FBU.encoding = null;
         }
 
-        this._display.flip(false, this._FBU.frame_id, this._FBU.rect_total);
-
+        if (this._FBU.rect_total > 0) {
+            this._display.flip(this._FBU.frame_id, this._FBU.rect_total);
+        }
+        
         return true;  // We finished this FBU
     }
 
     _handleRect() {
         switch (this._FBU.encoding) {
             case encodings.pseudoEncodingLastRect:
-                this._FBU.rect_total++; //Must include the last rect itself
-                //this._display.flip(false, this._FBU.frame_id, this._FBU.rect_total);
+                this._FBU.rect_total++; //only track rendered rects and last rect
                 this._FBU.rects = 1; // Will be decreased when we return
-                //this._FBU.rect_total = 0;
-                //this._FBU.frame_id++;
                 return true;
 
             case encodings.pseudoEncodingVMwareCursor:
@@ -3254,7 +3253,7 @@ export default class RFB extends EventTargetMixin {
 
             default:
                 if (this._handleDataRect()) {
-                    this._FBU.rect_total++;
+                    this._FBU.rect_total++; //only track rendered rects and last rect
                     return true;
                 } 
                 return false;
@@ -3534,7 +3533,7 @@ export default class RFB extends EventTargetMixin {
             return false;
         }
 
-        //try {
+        try {
             if (this._transitConnectionState == this.TransitConnectionStates.Udp || this._transitConnectionState == this.TransitConnectionStates.Failure) {
                 if (this._transitConnectionState == this.TransitConnectionStates.Udp) {
                     Log.Warn("Implicit UDP Transit Failure, TCP rects recieved while in UDP mode.")
@@ -3558,10 +3557,10 @@ export default class RFB extends EventTargetMixin {
                                       this._FBU.width, this._FBU.height,
                                       this._sock, this._display,
                                       this._fbDepth, this._FBU.frame_id);
-        //} catch (err) {
-	    //this._fail("Error decoding rect: " + err);
-        //    return false;
-        //}
+        } catch (err) {
+	        this._fail("Error decoding rect: " + err);
+            return false;
+        }
     }
 
     _updateContinuousUpdates() {

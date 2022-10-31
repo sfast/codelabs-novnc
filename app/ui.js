@@ -1660,14 +1660,12 @@ const UI = {
                         UI.forceSetting('enable_qoi', false, false);
                     }
                     UI.toggleQOI();
-                    UI.updateQuality();
                     break;
                 case 'enable_qoi':
                     if(!UI.getSetting('enable_qoi')) {
                         UI.forceSetting('enable_qoi', true, false);
                     }
                     UI.toggleQOI();
-                    UI.updateQuality();
                     break;
                 case 'enable_webrtc':
                     if (!UI.getSetting('enable_webrtc')) {
@@ -1979,6 +1977,8 @@ const UI = {
                 UI.enableSetting('video_out_time');
                 UI.showStatus("Refresh or reconnect to apply changes.");
                 return;
+            case 5: //extreme+lossless
+                UI.forceSetting('enable_qoi', true, false);
             case 4: //extreme
                 UI.forceSetting('dynamic_quality_min', 9);
                 UI.forceSetting('dynamic_quality_max', 9);
@@ -2040,6 +2040,12 @@ const UI = {
                 UI.forceSetting('video_scaling', 0);
                 UI.forceSetting('video_out_time', 3);
                 break;
+        }
+
+        //force QOI off if mode is below extreme
+        if (present_mode !== 4 && UI.getSetting('enable_qoi')) {
+            UI.showStatus("Lossless QOI disabled when not in extreme quality mode.");
+            UI.forceSetting('enable_qoi', false, false);
         }
 
         if (UI.rfb) {
@@ -2115,6 +2121,7 @@ const UI = {
             } else {
                 UI.rfb.enableWebRTC = false;
             }
+            UI.updateQuality();
         }
     },
 
@@ -2122,11 +2129,16 @@ const UI = {
       if(UI.rfb) {
           if(UI.getSetting('enable_qoi')) {
               UI.rfb.enableQOI = true;
+              if (!UI.rfb.enableQOI) {
+                UI.showStatus("Enabling QOI failed, browser may not be compatible with WASM and/or Workers.");
+                UI.forceSetting('enable_qoi', false, false);
+                return;
+              }
+              UI.forceSetting('video_quality', 4, false); //force into extreme quality mode
           } else {
               UI.rfb.enableQOI = false;
           }
-
-          UI.showStatus("Refresh or reconnect to apply changes.");
+          UI.updateQuality();
       }
     },
 

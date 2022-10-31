@@ -18,68 +18,20 @@ export default class TightDecoder {
         this._numColors = 0;
         this._palette = new Uint8Array(1024);  // 256 * 4 (max palette size * max bytes-per-pixel)
         this._len = 0;
+        this._enableQOI = false;
+        this._displayGlobal = display;
 
         this._zlibs = [];
         for (let i = 0; i < 4; i++) {
             this._zlibs[i] = new Inflator();
         }
-        this._sabTest = typeof SharedArrayBuffer;
-        if (this._sabTest !== 'undefined') {
-            this._threads = 8;
-            this._workerEnabled = false;
-            this._displayGlobal = display;
-            this._workers = [];
-            this._availableWorkers = [];
-            this._isDecoded = [];
-            this._sabs = [];
-            this._sabsR = [];
-            this._arrs = [];
-            this._arrsR = [];
-            this._qoiRects = [];
-            this._rectQlooping = false;
-            for (let i = 0; i < this._threads; i++) {
-                this._workers.push(new Worker("/core/decoders/qoi/decoder.js"));
-                this._availableWorkers.push(i);
-                this._isDecoded.push(true);
-                this._sabs.push(new SharedArrayBuffer(300000));
-                this._sabsR.push(new SharedArrayBuffer(400000));
-                this._arrs.push(new Uint8Array(this._sabs[i]));
-                this._arrsR.push(new Uint8ClampedArray(this._sabsR[i]));
-                this._workers[i].onmessage = (evt) => {
-                    //this._isDecoded[i] = true;
-                    //this._workerEnabled = true;
-                    this._availableWorkers.push(i);
-                    if(evt.data.result == 0) {
-                        let data = new Uint8ClampedArray(evt.data.length);
-                        data.set(this._arrsR[i].slice(0, evt.data.length));
-                        let img = new ImageData(data, evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
-                        
-                        this._displayGlobal.blitQoi(
-                            evt.data.x,
-                            evt.data.y,
-                            evt.data.width,
-                            evt.data.height,
-                            img,
-                            0,
-                            evt.data.frame_id,
-                            false
-                        );
-                        this._processRectQ();
-                    }
-                };
-            }
+    }
+
+    enableQOI() {
+        if (!this._enableQOI) {
+            this._enableQOIWorkers();
         }
-
-        fetch("/core/decoders/qoi/qoi.wasm")
-            .then(bytes => bytes.arrayBuffer())
-            .then(mod => WebAssembly.compile(mod))
-            .then(module => {
-                return new WebAssembly.Instance(module);
-            })
-            .then(instance => {
-                this._instance = instance;
-            });
-
+        return this._enableQOI; //did it succeed
     }
 
     decodeRect(x, y, width, height, sock, display, depth, frame_id) {
@@ -197,7 +149,7 @@ export default class TightDecoder {
             return false;
         }
 
-        if (this._sabTest !== 'undefined') {
+        if (this._enableQOI) {
             let dataClone = new Uint8Array(data);
             let item = {x: x,y: y,width: width,height: height,data: dataClone,depth: depth, frame_id: frame_id};
             this._qoiRects.push(item);
@@ -437,5 +389,53 @@ export default class TightDecoder {
             this._scratchBuffer = new Uint8Array(size);
         }
         return this._scratchBuffer;
+    }
+
+    _enableQOIWorkers() {
+        let sabTest = typeof SharedArrayBuffer;
+        if (sabTest !== 'undefined') {
+            this._enableQOI = true;
+            this._threads = 8;
+            this._workerEnabled = false;
+            this._workers = [];
+            this._availableWorkers = [];
+            this._sabs = [];
+            this._sabsR = [];
+            this._arrs = [];
+            this._arrsR = [];
+            this._qoiRects = [];
+            this._rectQlooping = false;
+            for (let i = 0; i < this._threads; i++) {
+                this._workers.push(new Worker("/core/decoders/qoi/decoder.js"));
+                this._availableWorkers.push(i);
+                this._sabs.push(new SharedArrayBuffer(300000));
+                this._sabsR.push(new SharedArrayBuffer(400000));
+                this._arrs.push(new Uint8Array(this._sabs[i]));
+                this._arrsR.push(new Uint8ClampedArray(this._sabsR[i]));
+                this._workers[i].onmessage = (evt) => {
+                    this._availableWorkers.push(i);
+                    if(evt.data.result == 0) {
+                        let data = new Uint8ClampedArray(evt.data.length);
+                        data.set(this._arrsR[i].slice(0, evt.data.length));
+                        let img = new ImageData(data, evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
+                        
+                        this._displayGlobal.blitQoi(
+                            evt.data.x,
+                            evt.data.y,
+                            evt.data.width,
+                            evt.data.height,
+                            img,
+                            0,
+                            evt.data.frame_id,
+                            false
+                        );
+                        this._processRectQ();
+                    }
+                };
+            }
+        } else {
+            this._enableQOI = false;
+            Log.Warn("Enabling QOI Failed, client not compatible.");
+        }
     }
 }

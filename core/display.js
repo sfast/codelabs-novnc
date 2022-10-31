@@ -13,14 +13,7 @@ import { isWindows } from './util/browser.js';
 
 export default class Display {
     constructor(target) {
-        this._renderQ = [];  // queue drawing actions for in-oder rendering
-        this._currentFrame = [];
-        this._nextFrame = [];
-
-        // TODO: For testing, remove me
-        this._copyRects = 0;
-        this._fillRects = 0;
-        this._blitRects = 0;
+        Log.Debug(">> Display.constructor");
 
         /*
         For performance reasons we use a multi dimensional array
@@ -30,9 +23,14 @@ export default class Display {
             1 - int, Rect Count
             2 - Array of Rect objects
             3 - bool, is the frame complete
-        Only allow 3 frames in the queue, can expand later if needed
+            4 - int, index of current rect (post-processing)
         */
         this._asyncFrameQueue = [];
+        /*
+        Buffer for incoming frames. The larger the buffer the more time there is to collect, process, and order rects
+        but the more delay there is. May need to adjust this higher for lower power devices when UDP is complete.
+        Decoders that use WASM in parallel can also cause out of order rects
+        */
         this._maxAsyncFrameQueue = 3;
         this._clearAsyncQueue();
 
@@ -43,12 +41,7 @@ export default class Display {
         this._fbHeight = 0;
 
         this._renderMs = 0;
-
         this._prevDrawStyle = "";
-
-        Log.Debug(">> Display.constructor");
-
-        // The visible canvas
         this._target = target;
 
         if (!this._target) {
@@ -70,27 +63,21 @@ export default class Display {
 
         Log.Debug("User Agent: " + navigator.userAgent);
 
-        // performance metrics, try to calc a fps equivelant
+        // performance metrics
         this._flipCnt = 0;
         this._lastFlip = Date.now();
         this._droppedFrames = 0;
         this._droppedRects = 0;
-        this._missingRectCnt = 0; //frames missing a rect count
+        this._missingRectCnt = 0;
         setInterval(function() {
             let delta = Date.now() - this._lastFlip;
             if (delta > 0) {
                 this._fps = (this._flipCnt / (delta / 1000)).toFixed(2);
             }
-            //Log.Info('Dropped frames per second: ' + (this._droppedFrames / (delta / 1000)).toFixed(2));
-            //TODO: Delete me
-            Log.Warn('Dropped Frames: ' + this._droppedFrames + ' Rects: ' + this._droppedRects + ' Mising Rect Cnt: ' + this._missingRectCnt);
-            Log.Warn('Rect Counts: Copy ' + this._copyRects + ', Fill ' + this._fillRects + ', Blit ' + this._blitRects);
+            Log.Info('Dropped Frames: ' + this._droppedFrames + ' Dropped Rects: ' + this._droppedRects + ' Missing Rect Cnt: ' + this._missingRectCnt);
             this._flipCnt = 0;
-            //this._droppedFrames = 0;
             this._lastFlip = Date.now();
         }.bind(this), 5000);
-
-        Log.Debug("<< Display.constructor");
 
         // ===== PROPERTIES =====
 
@@ -102,7 +89,11 @@ export default class Display {
         // ===== EVENT HANDLERS =====
 
         this.onflush = () => {  }; // A flush request has finished
+
+        // Use requestAnimationFrame to write to canvas, to match display refresh rate
         window.requestAnimationFrame( () => { this._pushAsyncFrame(); });
+
+        Log.Debug("<< Display.constructor");
     }
 
     // ===== PROPERTIES =====
@@ -179,8 +170,6 @@ export default class Display {
             return;
         }
         Log.Debug("viewportChange deltaX: " + deltaX + ", deltaY: " + deltaY);
-
-        //this.flip();  //TODO: need to come back and look into implications of direct to canvas to resizing
     }
 
     viewportChangeSize(width, height) {
@@ -215,8 +204,6 @@ export default class Display {
 
             // The position might need to be updated if we've grown
             this.viewportChangePos(0, 0);
-
-            //this.flip(); //TODO: need to come back and look into implications of direct to canvas to resizing
 
             // Update the visible size of the target canvas
             this._rescale(this._scale);
@@ -273,7 +260,7 @@ export default class Display {
     }
 
     // rendering canvas
-    flip(fromQueue, frame_id, rect_cnt) { //TODO: remove fromQueeu
+    flip(frame_id, rect_cnt) {
         this._asyncRenderQPush({
             'type': 'flip',
             'frame_id': frame_id,
@@ -287,17 +274,10 @@ export default class Display {
     }
 
     flush() {
-        //throw away the oldest frame
-        /*
-        this._asyncFrameQueue.shift();
-        this._asyncFrameQueue.push([ 0, 0, [], false ]);
-        this._droppedFrames++;
-        this.onflush();
-        */
-        //this._processAsyncFrameQueue(true); //Force process the oldest frame
+        //force oldest frame to render
         this._asyncFrameComplete(0, true);
 
-        //this.onflush();
+        //this in effect blocks more incoming frames until the oldest frame has been rendered to canvas (tcp only)
         this._flushing = true;
     }
 
@@ -406,33 +386,7 @@ export default class Display {
                 'frame_id': frame_id
             });
         } else {
-            //window.requestAnimationFrame(() => {
               this._targetCtx.putImageData(arr, x, y);
-            //});
-        }
-    }
-
-    blitQoi2(x, y, w, h, img, offset, frame_id, fromQueue) {
-        if (!fromQueue) {
-            createImageBitmap(img).then(
-                function(bitmap) {
-                    this._asyncRenderQPush({
-                        'type': 'blitQ',
-                        'img': bitmap,
-                        'x': x,
-                        'y': y,
-                        'width': w,
-                        'height': h,
-                        'frame_id': frame_id
-                    });
-                }.bind(this)
-            );
-        } else {
-            if (img.width != w || img.height != h) {
-                this._targetCtx.drawImage(img, x, y, w, h);
-            } else {
-                this._targetCtx.drawImage(img, x, y);
-            }
         }
     }
 
@@ -472,7 +426,7 @@ export default class Display {
     // ===== PRIVATE METHODS =====
 
     /*
-    For decoders that are asynchronous in nature, rects come in out of order
+    Process incoming rects into a frame buffer, assume rects are out of order due to either UDP or parallel processing of decoding
     */
     _asyncRenderQPush(rect) {
         let frameIx = -1;
@@ -498,14 +452,13 @@ export default class Display {
 
         if (frameIx >= 0) {
             if (rect.type == "flip") {
+                //flip rect contains the rect count for the frame
                 this._asyncFrameQueue[frameIx][1] = rect.rect_cnt;
             }
 
             if (this._asyncFrameQueue[frameIx][1] == this._asyncFrameQueue[frameIx][2].length) {
+                //frame is complete
                 this._asyncFrameComplete(frameIx);
-                    //this._asyncFrameQueue[frameIx][3] = true; //frame complete
-                    //this._processAsyncFrameQueue(false)
-                    
             }
         } else {
             if (rect.frame_id < oldestFrameID) {
@@ -516,86 +469,66 @@ export default class Display {
                 //frame is newer than any frame in the queue, drop old frames
                 this._asyncFrameQueue.shift();
                 let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
-                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ], (rect_cnt == 1) ]);
+                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ], (rect_cnt == 1), 0 ]);
                 this._droppedFrames++;
             }
         }
         
     }
 
+    /*
+    Clear the async frame buffer
+    */
     _clearAsyncQueue() {
         this._droppedFrames += this._asyncFrameQueue.length;
 
         this._asyncFrameQueue = [];
         for (let i=0; i<this._maxAsyncFrameQueue; i++) {
-            this._asyncFrameQueue.push([ 0, 0, [], false ])
+            this._asyncFrameQueue.push([ 0, 0, [], false, 0 ])
         }
     }
 
+    /*
+    Pre-processing required before displaying a finished frame
+    If marked force, unloaded images will be skipped and the frame will be marked complete and ready for rendering
+    */
     _asyncFrameComplete(frameIx, force=false) {
+        let currentFrameRectIx = this._asyncFrameQueue[frameIx][4];
+
         if (force) {
             if (this._asyncFrameQueue[frameIx][1] == 0) {
                 this._missingRectCnt++;
             } else if (this._asyncFrameQueue[frameIx][1] !== this._asyncFrameQueue[frameIx][2].length) {
                 this._droppedRects += (this._asyncFrameQueue[frameIx][1] - this._asyncFrameQueue[frameIx][2].length);
             }
-            for (let x=0; x<this._asyncFrameQueue[frameIx][2].length; x++) {
-                if (this._asyncFrameQueue[frameIx][2][x].type == 'img' && !this._asyncFrameQueue[frameIx][2][x].img.complete) {
-                    this._asyncFrameQueue[frameIx][2][x].type = 'skip';
+            while (currentFrameRectIx < this._asyncFrameQueue[frameIx][2].length) {   
+                if (this._asyncFrameQueue[frameIx][2][currentFrameRectIx].type == 'img' && !this._asyncFrameQueue[frameIx][2][currentFrameRectIx].img.complete) {
+                    this._asyncFrameQueue[frameIx][2][currentFrameRectIx].type = 'skip';
                     this._droppedRects++;
                 }
+                currentFrameRectIx++;
             }
         } else {
-            for (let x=0; x<this._asyncFrameQueue[frameIx][2].length; x++) {
-                if (this._asyncFrameQueue[frameIx][2][x].type == 'img' && !this._asyncFrameQueue[frameIx][2][x].img.complete) {
-                    this._asyncFrameQueue[frameIx][2][x].img.addEventListener('load', () => { this._asyncFrameComplete(frameIx); });
+            while (currentFrameRectIx < this._asyncFrameQueue[frameIx][2].length) {
+                if (this._asyncFrameQueue[frameIx][2][currentFrameRectIx].type == 'img' && !this._asyncFrameQueue[frameIx][2][currentFrameRectIx].img.complete) {
+                    this._asyncFrameQueue[frameIx][2][currentFrameRectIx].img.addEventListener('load', () => { this._asyncFrameComplete(frameIx); });
+                    this._asyncFrameQueue[frameIx][4] = currentFrameRectIx;
                     return;
                 }
+                currentFrameRectIx++;
             }
         }
+        this._asyncFrameQueue[frameIx][4] = currentFrameRectIx;
         this._asyncFrameQueue[frameIx][3] = true;
     }
 
-    _processAsyncFrameQueue(force=false) {
-        for (let i=0; i<1; i++) {
-            if (this._asyncFrameQueue[i][3] || force) {
-
-
-
-
-                if (force && this._asyncFrameQueue[i][1] == 0) {
-                    this._missingRectCnt++;
-                } else if (this._asyncFrameQueue[i][1] !== this._asyncFrameQueue[i][2].length) {
-                    this._droppedRects += (this._asyncFrameQueue[i][1] - this._asyncFrameQueue[i][2].length);
-                }
-
-                for (let x=0; x<this._asyncFrameQueue[i][2].length; x++) {
-                    if (this._asyncFrameQueue[i][2][x].type == 'img' && !this._asyncFrameQueue[i][2][x].img.complete) {
-                        if (!force) {
-                            this._asyncFrameQueue[i][2][x].img.addEventListener('load', () => { this._processAsyncFrameQueue(); });
-                            return;
-                        } else {
-                            this._asyncFrameQueue[i][2][x].type = 'skip';
-                        }
-                    }
-                }
-                
-                if (this._flushing) {
-                    this._flushing = false;
-                    this.onflush();
-                }
-            }
-        }
-    }
-
-
-    //push a specific frame from the async buffer to the live queue
-    //it will then remove the frame from the asycn queue 
-    //frames older than the requested frame will be dropped
+    /*
+    Push the oldest frame in the buffer to the canvas if it is marked ready
+    */
     _pushAsyncFrame() {
         if (this._asyncFrameQueue[0][3]) {
             let frame = this._asyncFrameQueue.shift()[2];
-            this._asyncFrameQueue.push([ 0, 0, [], false ]);
+            this._asyncFrameQueue.push([ 0, 0, [], false, 0 ]);
             
             //render the selected frame
             for (let i = 0; i < frame.length; i++) {
@@ -604,15 +537,12 @@ export default class Display {
                 switch (a.type) {
                     case 'copy':
                         this.copyImage(a.oldX, a.oldY, a.x, a.y, a.width, a.height, a.frame_id, true);
-                        this._copyRects++; //TODO: Delete me
                         break;
                     case 'fill':
                         this.fillRect(a.x, a.y, a.width, a.height, a.color, a.frame_id, true);
-                        this._copyRects++; //TODO: Delete me
                         break;
                     case 'blit':
                         this.blitImage(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
-                        this._copyRects++; //TODO: Delete me
                         break;
                     case 'blitQ':
                         this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
@@ -670,61 +600,5 @@ export default class Display {
             this._targetCtx.fillStyle = newStyle;
             this._prevDrawStyle = newStyle;
         }
-    }
-
-    _renderQPush(action) {
-        this._renderQ.push(action);
-        if (this._renderQ.length === 1) {
-            this._scanRenderQ();
-        }
-    }
-
-    _resumeRenderQ() {
-        this.removeEventListener('load', this._noVNCDisplay._resumeRenderQ);
-        this._noVNCDisplay._scanRenderQ();
-    }
-
-    _scanRenderQ() {
-        //TODO: Remove this and everything related to it
-        let ready = true;
-        let before = Date.now();
-        while (ready && this._renderQ.length > 0) {
-            const a = this._renderQ[0];
-            switch (a.type) {
-                case 'flip':
-                    this._currentFrame = this._nextFrame;
-                    this._nextFrame = [];
-                    this.flip(true);
-                    break;
-                case 'blitQ':
-                    this._nextFrame.push(a);
-                    break;
-                case 'img':
-                    if (a.img.complete) {
-                        this._nextFrame.push(a);
-                    } else {
-                        a.img._noVNCDisplay = this;
-                        a.img.addEventListener('load', this._resumeRenderQ);
-                        // We need to wait for this image to 'load'
-                        ready = false;
-                    }
-                    break;
-                default:
-                    this._nextFrame.push(a);
-                    break;
-            }
-
-            if (ready) {
-                this._renderQ.shift();
-            }
-        }
-
-        if (this._renderQ.length === 0 && this._flushing) {
-            this._flushing = false;
-            this.onflush();
-        }
-
-        let elapsed = Date.now() - before;
-        this._renderMs += elapsed;
     }
 }

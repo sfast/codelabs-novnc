@@ -395,7 +395,11 @@ export default class TightDecoder {
         let sabTest = typeof SharedArrayBuffer;
         if (sabTest !== 'undefined') {
             this._enableQOI = true;
-            this._threads = 8;
+            if ((window.navigator.hardwareConcurrency) && (window.navigator.hardwareConcurrency > 8)) {
+                this._threads = window.navigator.hardwareConcurrency;
+            } else {
+                this._threads = 8;
+            }
             this._workerEnabled = false;
             this._workers = [];
             this._availableWorkers = [];

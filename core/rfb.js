@@ -3555,7 +3555,7 @@ export default class RFB extends EventTargetMixin {
                                       this._sock, this._display,
                                       this._fbDepth, this._FBU.frame_id);
         } catch (err) {
-	        this._fail("Error decoding rect: " + err);
+            this._fail("Error decoding rect: " + err);
             return false;
         }
     }

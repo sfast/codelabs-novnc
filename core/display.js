@@ -386,13 +386,13 @@ export default class Display {
                 'frame_id': frame_id
             });
         } else {
-              this._targetCtx.putImageData(arr, x, y);
+            this._targetCtx.putImageData(arr, x, y);
         }
     }
 
     drawImage(img, x, y, w, h) {
         try {
-	        if (img.width != w || img.height != h) {
+            if (img.width != w || img.height != h) {
                 this._targetCtx.drawImage(img, x, y, w, h);
             } else {
                 this._targetCtx.drawImage(img, x, y);

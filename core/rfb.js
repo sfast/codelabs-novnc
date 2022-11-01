@@ -2539,12 +2539,8 @@ export default class RFB extends EventTargetMixin {
         encs.push(encodings.encodingRaw);
 
         // Psuedo-encoding settings
-        var quality = 6;
-        var compression = 2;
-        var screensize = this._screenSize(false);
         encs.push(encodings.pseudoEncodingQualityLevel0 + this._qualityLevel);
         encs.push(encodings.pseudoEncodingCompressLevel0 + this._compressionLevel);
-
         encs.push(encodings.pseudoEncodingDesktopSize);
         encs.push(encodings.pseudoEncodingLastRect);
         encs.push(encodings.pseudoEncodingQEMUExtendedKeyEvent);
@@ -2558,6 +2554,7 @@ export default class RFB extends EventTargetMixin {
             encs.push(encodings.pseudoEncodingWEBP);
         if (this._enableQOI)
             encs.push(encodings.pseudoEncodingQOI);
+            
 
         // kasm settings; the server may be configured to ignore these
         encs.push(encodings.pseudoEncodingJpegVideoQualityLevel0 + this.jpegVideoQuality);
@@ -3179,6 +3176,9 @@ export default class RFB extends EventTargetMixin {
             this._sock.rQskipBytes(1);  // Padding
             this._FBU.rects = this._sock.rQshift16();
 
+            this._FBU.frame_id++;
+            this._FBU.rect_total = 0;
+
             // Make sure the previous frame is fully rendered first
             // to avoid building up an excessive queue
             if (this._display.pending()) {
@@ -3186,9 +3186,6 @@ export default class RFB extends EventTargetMixin {
                 this._display.flush();
                 return false;
             }
-
-            this._FBU.frame_id++;
-            this._FBU.rect_total = 0;
         }
 
         while (this._FBU.rects > 0) {

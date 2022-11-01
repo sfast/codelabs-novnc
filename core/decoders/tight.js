@@ -152,8 +152,14 @@ export default class TightDecoder {
         if (this._enableQOI) {
             let dataClone = new Uint8Array(data);
             let item = {x: x,y: y,width: width,height: height,data: dataClone,depth: depth, frame_id: frame_id};
-            this._qoiRects.push(item);
-            this._processRectQ();
+            if (this._qoiRects.length < 1000) {
+                this._qoiRects.push(item);
+                this._processRectQ();
+            } else {
+                Log.Warn("QOI queue exceeded limit.");
+                this._qoiRects.splice(0, 500);
+            }
+            
         }
 
         return true;
@@ -411,29 +417,36 @@ export default class TightDecoder {
             this._rectQlooping = false;
             for (let i = 0; i < this._threads; i++) {
                 this._workers.push(new Worker("/core/decoders/qoi/decoder.js"));
-                this._availableWorkers.push(i);
                 this._sabs.push(new SharedArrayBuffer(300000));
                 this._sabsR.push(new SharedArrayBuffer(400000));
                 this._arrs.push(new Uint8Array(this._sabs[i]));
                 this._arrsR.push(new Uint8ClampedArray(this._sabsR[i]));
                 this._workers[i].onmessage = (evt) => {
                     this._availableWorkers.push(i);
-                    if(evt.data.result == 0) {
-                        let data = new Uint8ClampedArray(evt.data.length);
-                        data.set(this._arrsR[i].slice(0, evt.data.length));
-                        let img = new ImageData(data, evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
-                        
-                        this._displayGlobal.blitQoi(
-                            evt.data.x,
-                            evt.data.y,
-                            evt.data.width,
-                            evt.data.height,
-                            img,
-                            0,
-                            evt.data.frame_id,
-                            false
-                        );
-                        this._processRectQ();
+                    switch(evt.data.result) {
+                        case 0:
+                            let data = new Uint8ClampedArray(evt.data.length);
+                            data.set(this._arrsR[i].slice(0, evt.data.length));
+                            let img = new ImageData(data, evt.data.img.width, evt.data.img.height, {colorSpace: evt.data.img.colorSpace});
+                            
+                            this._displayGlobal.blitQoi(
+                                evt.data.x,
+                                evt.data.y,
+                                evt.data.width,
+                                evt.data.height,
+                                img,
+                                0,
+                                evt.data.frame_id,
+                                false
+                            );
+                            this._processRectQ();
+                            break;
+                        case 1:
+                            Log.Info("QOI Worker is now available.");
+                            break;
+                        case 2:
+                            Log.Info("Error on worker: " + evt.error);
+                            break;
                     }
                 };
             }

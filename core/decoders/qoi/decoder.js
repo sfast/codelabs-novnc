@@ -298,7 +298,6 @@ async function init(input) {
 var arr;
 
 async function run() {
-  await init();
   self.addEventListener('message', function(evt) {
     try {
       let length = evt.data.length;
@@ -325,9 +324,19 @@ async function run() {
         frame_id: evt.data.frame_id
       });
     } catch (err) {
-      console.log(err)
+      self.postMessage({
+        result: 2,
+        error: err
+      });
     }
   }, false);
+
+  await init();
+
+  //Send message that worker is ready
+  self.postMessage({
+    result: 1
+  })
 }
 
 run();

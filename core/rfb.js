@@ -814,6 +814,7 @@ export default class RFB extends EventTargetMixin {
         if (this._rfbConnectionState !== 'connected' || this._viewOnly) { return; }
 
         this.sentEventsCounter+=1;
+        Log.Info("sendkey called, event counter modified");
 
         if (down === undefined) {
             this.sendKey(keysym, code, true);
@@ -873,6 +874,7 @@ export default class RFB extends EventTargetMixin {
         if (!(typeof text === 'string' && text.length > 0)) { return; }
 
         this.sentEventsCounter+=1;
+        Log.Info("clipboardPasteFrom called, event counter modified");
 
         let data = new Uint8Array(text.length);
         for (let i = 0; i < text.length; i++) {
@@ -898,6 +900,7 @@ export default class RFB extends EventTargetMixin {
     async clipboardPasteDataFrom(clipdata) {
         if (this._rfbConnectionState !== 'connected' || this._viewOnly) { return; }
         this.sentEventsCounter+=1;
+        Log.Info("clipboardPasteDataFrom called, event counter modified");
 
         let dataset = [];
         let mimes = [];
@@ -981,6 +984,7 @@ export default class RFB extends EventTargetMixin {
                 Log.Info(`connecting to ${this._url}`);
                 this._sock.open(this._url, this._wsProtocols);
                 this.sentEventsCounter+=1;
+                Log.Info("_connect called, event counter modified");
             } catch (e) {
                 if (e.name === 'SyntaxError') {
                     this._fail("Invalid host or port (" + e + ")");
@@ -1305,6 +1309,7 @@ export default class RFB extends EventTargetMixin {
                                     this._screenID, this._screenFlags);
 
         this.sentEventsCounter+=1;
+        Log.Info("_requestRemoteResize called, event counter modified");
 
         Log.Debug('Requested new desktop size: ' +
                    size.w + 'x' + size.h);
@@ -1637,11 +1642,13 @@ export default class RFB extends EventTargetMixin {
                 // Send the button down event here, as the button up
                 // event is sent at the end of this function.
                 this.sentEventsCounter+=1;
+                Log.Info("_hanldeMouseButton dragViewport called, event counter modified");
                 this._sendMouse(x, y, bmask);
             }
         }
 
         this.sentEventsCounter+=1;
+        Log.Info("_handleMouseButton called, event counter modified");
 
         // Flush waiting move event first
         if (this._mouseMoveTimer !== null) {
@@ -3468,6 +3475,7 @@ export default class RFB extends EventTargetMixin {
                 this._maxVideoResolutionX,
                 this._maxVideoResolutionY);
             this.sentEventsCounter+=1;
+            Log.Info("_handleExtendedDesktopSize called, event counter modified");
         }
 
         this._sock.rQskipBytes(1);  // number-of-screens

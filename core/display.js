@@ -273,12 +273,15 @@ export default class Display {
         return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0;
     }
 
-    flush() {
+    flush(onflush_message=true) {
         //force oldest frame to render
         this._asyncFrameComplete(0, true);
 
-        //this in effect blocks more incoming frames until the oldest frame has been rendered to canvas (tcp only)
-        this._flushing = true;
+        //the caller wants to receive an onflush event when complete
+        //tcp uses this for flow control (slow down/block) 
+        //udp cant implicitly slow anything down,so dont bother triggering an event
+        if (onflush_message)
+            this._flushing = true;
     }
 
     fillRect(x, y, width, height, color, frame_id, fromQueue) {

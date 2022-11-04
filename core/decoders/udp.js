@@ -49,7 +49,7 @@ export default class UDPDecoder {
     _fillRect(x, y, width, height, data, display, depth, frame_id) {
 
         display.fillRect(x, y, width, height,
-            [data[13], data[14], data[15]], false, frame_id);
+            [data[13], data[14], data[15]], frame_id, false);
 
         return true;
     }
@@ -151,7 +151,7 @@ export default class UDPDecoder {
             rgbx[i + 3] = 255;  // Alpha
         }
 
-        display.blitImage(x, y, width, height, rgbx, 0, false, frame_id);
+        display.blitImage(x, y, width, height, rgbx, 0, frame_id, false);
 
         return true;
     }
@@ -223,7 +223,7 @@ export default class UDPDecoder {
             }
         }
 
-        display.blitImage(x, y, width, height, dest, 0, false, frame_id);
+        display.blitImage(x, y, width, height, dest, 0, frame_id, false);
     }
 
     _paletteRect(x, y, width, height, data, palette, display, frame_id) {
@@ -238,7 +238,7 @@ export default class UDPDecoder {
             dest[i + 3] = 255;
         }
 
-        display.blitImage(x, y, width, height, dest, 0, false, frame_id);
+        display.blitImage(x, y, width, height, dest, 0, frame_id, false);
     }
 
     _gradientFilter(streamId, x, y, width, height, data, display, depth, frame_id) {

@@ -1051,7 +1051,7 @@ export default class RFB extends EventTargetMixin {
 
         // WebRTC UDP datachannel inits
         {
-            this._udpBuffer = [];
+            this._udpBuffer = new Map();
 
             this._udpPeer = new RTCPeerConnection({
                 iceServers: [{
@@ -1086,8 +1086,6 @@ export default class RFB extends EventTargetMixin {
             let sock = this._sock;
             let udpBuffer = this._udpBuffer;
             let me = this;
-            let currentRect = { id: -1 };
-            let currentRectIx = -1;
             this._udpChannel.onmessage = function(e) {
                 //Log.Info("got udp msg", e.data);
                 const u8 = new Uint8Array(e.data);
@@ -1122,59 +1120,36 @@ export default class RFB extends EventTargetMixin {
                     me._handleUdpRect(u8.slice(20), frame_id);
                 } else { // Use buffer
                     const now = Date.now();
+		    
+                    if (udpBuffer.has(id)) {
+                        let item = udpBuffer.get(id);
+                        item.recieved_pieces += 1;
+                        item.data[i] = u8.slice(20);
+                        item.total_bytes += item.data[i].length;
 
-                    if (currentRect.id !== id) {
-                        for (let z=0; z<udpBuffer.length; z++) {
-                            if (udpBuffer[z].id == id) {
-                                currentRect = udpBuffer[z];
-                                currentRectIx = z;
-                                break;
-                            }
-                        }
-                        if (currentRect.id !== id) {
-                            currentRect = {
-                                total_pieces: pieces,   // number of pieces expected
-                                arrival: now,       //time first piece was recieved
-                                received_pieces: 1,     // current number of pieces in data
-                                total_bytes: 0,         // total size of all data pieces combined
-                                data: new Array(pieces),
-                                frame_id: frame_id,
-                                id: id,
-                            }
-                            currentRect.data[i] = u8.slice(20);
-                            currentRect.total_bytes = currentRect.data[i].length;
-                            udpBuffer.push(currentRect);
-                        }
-                    } else {
-                        currentRect.received_pieces++;
-                        currentRect.data[i] = u8.slice(20);
-                        currentRect.total_bytes += currentRect.data[i].length;
-
-                        if (currentRect.total_pieces == currentRect.received_pieces) {
-                            // Message is complete, combine data into a single array
-                            var finaldata = new Uint8Array(currentRect.total_bytes);
+                        if (item.total_pieces == item.recieved_pieces) {
+                            // Message is complete, combile data into a single array
+                            var finaldata = new Uint8Array(item.total_bytes);
                             let z = 0;
-                            for (let x = 0; x < currentRect.data.length; x++) {
-                                finaldata.set(currentRect.data[x], z);
-                                z += currentRect.data[x].length;
+                            for (let x = 0; x < item.data.length; x++) {
+                                finaldata.set(item.data[x], z);
+                                z += item.data[x].length;
                             }
-
-                            //remove rect from buffer
-                            udpBuffer.splice(currentRectIx, 1);
-
-                            //Initialize current rect, assuming newest rect will be next
-                            if (udpBuffer.length > 0) {
-                                currentRect = udpBuffer[udpBuffer.length - 1];
-                                currentRectIx = udpBuffer.length -1;
-                            } else {
-                                currentRect = { id: -1 }
-                                currentRectIx = -1;
-                            }
-
+                            udpBuffer.delete(id);
                             me._handleUdpRect(finaldata, frame_id);
                         }
+                    } else {
+                        let item = {
+                            total_pieces: pieces,   // number of pieces expected
+                                arrival: now,       //time first piece was recieved
+                            recieved_pieces: 1,     // current number of pieces in data
+                            total_bytes: 0,         // total size of all data pieces combined
+                            data: new Array(pieces)
+                        }
+                        item.data[i] = u8.slice(20);
+                        item.total_bytes = item.data[i].length;
+                        udpBuffer.set(id, item);
                     }
-		    
                 }
             }
         }
@@ -3104,22 +3079,22 @@ export default class RFB extends EventTargetMixin {
         switch (frame.encoding) {
             case encodings.pseudoEncodingLastRect:
                 if (document.visibilityState !== "hidden") {
-                    this._display.flip(frame_id, frame.x); //Last Rect message, first 16 bytes contain rect count
+                    this._display.flip(frame_id, frame.x + 1); //Last Rect message, first 16 bytes contain rect count
                     if (this._display.pending())
                         this._display.flush(false);
                 }
                 break;
             case encodings.encodingTight:
                 let decoder = this._decoders[encodings.encodingUDP];
-                try {
+                //try {
                     decoder.decodeRect(frame.x, frame.y,
                         frame.width, frame.height,
                         data, this._display,
                         this._fbDepth, frame_id);
-                } catch (err) {
+                /*} catch (err) {
                     this._fail("Error decoding rect: " + err);
                     return false;
-                }
+                }*/
                 break;
             default:
                 Log.Error("Invalid rect encoding via UDP: " + frame.encoding);
@@ -3241,7 +3216,7 @@ export default class RFB extends EventTargetMixin {
             this._FBU.encoding = null;
         }
 
-        if (this._FBU.rect_total > 0) {
+        if (this._FBU.rect_total > 1) {
             this._display.flip(this._FBU.frame_id, this._FBU.rect_total);
         }
         

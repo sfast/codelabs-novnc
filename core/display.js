@@ -31,7 +31,7 @@ export default class Display {
         but the more delay there is. May need to adjust this higher for lower power devices when UDP is complete.
         Decoders that use WASM in parallel can also cause out of order rects
         */
-        this._maxAsyncFrameQueue = 3;
+        this._maxAsyncFrameQueue = 5;
         this._clearAsyncQueue();
 
         this._flushing = false;
@@ -443,7 +443,7 @@ export default class Display {
             } else if (this._asyncFrameQueue[i][0] == 0) {
                 let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
                 this._asyncFrameQueue[i][0] = rect.frame_id;
-                this._asyncFrameQueue[i][1] = rect_cnt;
+                //this._asyncFrameQueue[i][1] = rect_cnt;
                 this._asyncFrameQueue[i][2].push(rect);
                 this._asyncFrameQueue[i][3] = (rect_cnt == 1);
                 frameIx = i;
@@ -456,6 +456,9 @@ export default class Display {
         if (frameIx >= 0) {
             if (rect.type == "flip") {
                 //flip rect contains the rect count for the frame
+                if (this._asyncFrameQueue[frameIx][1] !== 0) {
+                    Log.Warn("Redundant flip rect, current rect_cnt: " + this._asyncFrameQueue[frameIx][1] + ", new rect_cnt: " + rect.rect_cnt );
+                }
                 this._asyncFrameQueue[frameIx][1] = rect.rect_cnt;
             }
 
@@ -503,6 +506,9 @@ export default class Display {
                 this._missingRectCnt++;
             } else if (this._asyncFrameQueue[frameIx][1] !== this._asyncFrameQueue[frameIx][2].length) {
                 this._droppedRects += (this._asyncFrameQueue[frameIx][1] - this._asyncFrameQueue[frameIx][2].length);
+                if (this._asyncFrameQueue[frameIx][2].length > this._asyncFrameQueue[frameIx][1]) {
+                    Log.Warn("The impossible just happened.");
+                }
             }
             while (currentFrameRectIx < this._asyncFrameQueue[frameIx][2].length) {   
                 if (this._asyncFrameQueue[frameIx][2][currentFrameRectIx].type == 'img' && !this._asyncFrameQueue[frameIx][2][currentFrameRectIx].img.complete) {

@@ -1609,6 +1609,7 @@ const UI = {
                     break;
                 case 'setvideoquality':
                     UI.forceSetting('video_quality', parseInt(event.data.value), false);
+                    UI.forceSetting('enable_qoi', false, false); // QOI controlled via video quality mode when in iframe
                     UI.updateQuality();
                     break;
                 case 'enable_game_mode':

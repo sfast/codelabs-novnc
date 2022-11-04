@@ -2043,7 +2043,7 @@ const UI = {
         }
 
         //force QOI off if mode is below extreme
-        if (present_mode !== 4 && UI.getSetting('enable_qoi')) {
+        if (present_mode < 4 && UI.getSetting('enable_qoi')) {
             UI.showStatus("Lossless QOI disabled when not in extreme quality mode.");
             UI.forceSetting('enable_qoi', false, false);
         }

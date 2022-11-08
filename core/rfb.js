@@ -1113,6 +1113,7 @@ export default class RFB extends EventTargetMixin {
                                         (u8[19] << 24), 10);
 
                 if (me._transitConnectionState !== me.TransitConnectionStates.Udp) {
+                    me._display.clear();
                     me._changeTransitConnectionState(me.TransitConnectionStates.Udp);
                 }
 
@@ -3078,11 +3079,9 @@ export default class RFB extends EventTargetMixin {
         
         switch (frame.encoding) {
             case encodings.pseudoEncodingLastRect:
-                if (document.visibilityState !== "hidden") {
-                    this._display.flip(frame_id, frame.x + 1); //Last Rect message, first 16 bytes contain rect count
-                    if (this._display.pending())
-                        this._display.flush(false);
-                }
+                this._display.flip(frame_id, frame.x + 1); //Last Rect message, first 16 bytes contain rect count
+                if (this._display.pending())
+                    this._display.flush(false);
                 break;
             case encodings.encodingTight:
                 let decoder = this._decoders[encodings.encodingUDP];
@@ -3542,6 +3541,7 @@ export default class RFB extends EventTargetMixin {
                     this._udpTransitFailures++;
                 }
                 this._changeTransitConnectionState(this.TransitConnectionStates.Tcp);
+                this._display.clear();
                 if (this._useUdp) {
                     if (this._udpConnectFailures < 3 && this._udpTransitFailures < 3) {
                         setTimeout(function() {
@@ -3553,6 +3553,7 @@ export default class RFB extends EventTargetMixin {
                     }
                 }
             } else if (this._transitConnectionState == this.TransitConnectionStates.Downgrading) {
+                this._display.clear();
                 this._changeTransitConnectionState(this.TransitConnectionStates.Tcp);
             }
             return decoder.decodeRect(this._FBU.x, this._FBU.y,

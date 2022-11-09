@@ -1706,7 +1706,6 @@ const UI = {
                 case 'set_framerate':
                     UI.forceSetting('framerate', event.data.value);
                     UI.saveSetting('framerate');
-                    debugger;
                     if (UI.rfb){
                         UI.rfb.frameRate = parseInt(UI.getSetting('framerate'));
                         UI.rfb.updateConnectionSettings();

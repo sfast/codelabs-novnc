@@ -1,5 +1,6 @@
 /*
- * noVNC: HTML5 VNC client
+ * KasmVNC: HTML5 VNC client
+ * Copyright (C) 2020 Kasm Technologies
  * Copyright (C) 2020 The noVNC Authors
  * Licensed under MPL 2.0 (see LICENSE.txt)
  *
@@ -1197,6 +1198,7 @@ export default class RFB extends EventTargetMixin {
                 throw e;
             }
         }
+        this._display.dispose();
         clearTimeout(this._resizeTimeout);
         clearTimeout(this._mouseMoveTimer);
         Log.Debug("<< RFB.disconnect");

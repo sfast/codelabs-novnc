@@ -1,5 +1,6 @@
 /*
- * noVNC: HTML5 VNC client
+ * KasmVNC: HTML5 VNC client
+ * Copyright (C) 2020 Kasm Technologies
  * Copyright (C) 2019 The noVNC Authors
  * Licensed under MPL 2.0 (see LICENSE.txt)
  *
@@ -18,7 +19,7 @@ export default class Display {
         /*
         For performance reasons we use a multi dimensional array
         1st Dimension of Array Represents Frames, each element is a Frame
-        2nd Dimension contains 4 elements
+        2nd Dimension is the contents of a frame and meta data, contains 4 elements
             0 - int, FrameID
             1 - int, Rect Count
             2 - Array of Rect objects
@@ -26,11 +27,6 @@ export default class Display {
             4 - int, index of current rect (post-processing)
         */
         this._asyncFrameQueue = [];
-        /*
-        Buffer for incoming frames. The larger the buffer the more time there is to collect, process, and order rects
-        but the more delay there is. May need to adjust this higher for lower power devices when UDP is complete.
-        Decoders that use WASM in parallel can also cause out of order rects
-        */
         this._maxAsyncFrameQueue = 3;
         this._clearAsyncQueue();
 
@@ -71,7 +67,7 @@ export default class Display {
         this._forcedFrameCnt = 0;
         this._missingFlipRect = 0;
         this._lateFlipRect = 0;
-        setInterval(function() {
+        this._frameStatsInterval = setInterval(function() {
             let delta = Date.now() - this._lastFlip;
             if (delta > 0) {
                 this._fps = (this._flipCnt / (delta / 1000)).toFixed(2);
@@ -93,7 +89,7 @@ export default class Display {
         this.onflush = () => {  }; // A flush request has finished
 
         // Use requestAnimationFrame to write to canvas, to match display refresh rate
-        window.requestAnimationFrame( () => { this._pushAsyncFrame(); });
+        this._animationFrameID = window.requestAnimationFrame( () => { this._pushAsyncFrame(); });
 
         Log.Debug("<< Display.constructor");
     }
@@ -261,7 +257,11 @@ export default class Display {
         this.viewportChangePos(0, 0);
     }
 
-    // rendering canvas
+    /*
+    * Mark the specified frame with a rect count
+    * @param {number} frame_id - The frame ID of the target frame
+    * @param {number} rect_cnt - The number of rects in the target frame
+    */
     flip(frame_id, rect_cnt) {
         this._asyncRenderQPush({
             'type': 'flip',
@@ -270,28 +270,44 @@ export default class Display {
         });
     }
 
+    /*
+    * Is the frame queue full
+    * @returns {bool} is the queue full
+    */
     pending() {
         //is the slot in the queue for the newest frame in use
         return this._asyncFrameQueue[this._maxAsyncFrameQueue - 1][0] > 0;
     }
 
+    /*
+    * Force the oldest frame in the queue to render, whether ready or not.
+    * @param {bool} onflush_message - The caller wants an onflush event triggered once complete. This is
+    *   useful for TCP, allowing the websocket to block until we are ready to process the next frame.
+    *   UDP cannot block and thus no need to notify the caller when complete.
+    */
     flush(onflush_message=true) {
         //force oldest frame to render
         this._asyncFrameComplete(0, true);
 
-        //the caller wants to receive an onflush event when complete
-        //tcp uses this for flow control (slow down/block) 
-        //udp cant implicitly slow anything down,so dont bother triggering an event
         if (onflush_message)
             this._flushing = true;
     }
     
+    /*
+    * Clears the buffer of anything that has not yet been displayed.
+    * This must be called when switching between transit modes tcp/udp
+    */
     clear() {
-        /*
-        Clears the buffer of anything that has not yet been displayed.
-        This must be called when switching between transit modes tcp/udp
-        */
        this._clearAsyncQueue();
+    }
+
+    /*
+    * Cleans up resources, should be called on a disconnect
+    */
+    dispose() {
+        clearInterval(this._frameStatsInterval);
+        cancelAnimationFrame(this._animationFrameID);
+        this.clear();
     }
 
     fillRect(x, y, width, height, color, frame_id, fromQueue) {
@@ -521,7 +537,7 @@ export default class Display {
             } else if (this._asyncFrameQueue[frameIx][1] !== this._asyncFrameQueue[frameIx][2].length) {
                 this._droppedRects += (this._asyncFrameQueue[frameIx][1] - this._asyncFrameQueue[frameIx][2].length);
                 if (this._asyncFrameQueue[frameIx][2].length > this._asyncFrameQueue[frameIx][1]) {
-                    Log.Warn("The impossible just happened.");
+                    Log.Warn("Frame has more rects than the reported rect_cnt.");
                 }
             }
             while (currentFrameRectIx < this._asyncFrameQueue[frameIx][2].length) {   
@@ -543,11 +559,6 @@ export default class Display {
         }
         this._asyncFrameQueue[frameIx][4] = currentFrameRectIx;
         this._asyncFrameQueue[frameIx][3] = true;
-
-        if (force) {
-            this._pushAsyncFrame(force);
-            this._forcedFrameCnt++;
-        }
     }
 
     /*

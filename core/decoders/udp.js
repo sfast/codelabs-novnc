@@ -1,7 +1,6 @@
 /*
- * noVNC: HTML5 VNC client
- * Copyright (C) 2019 The noVNC Authors
- * (c) 2012 Michael Tinglof, Joe Balaz, Les Piech (Mercuri.ca)
+ * KasmVNC: HTML5 VNC client
+ * Copyright (C) 2020 Kasm Technologies
  * Licensed under MPL 2.0 (see LICENSE.txt)
  *
  * See README.md for usage and integration instructions.
@@ -15,6 +14,7 @@ export default class UDPDecoder {
     constructor() {
         this._filter = null;
         this._palette = new Uint8Array(1024);  // 256 * 4 (max palette size * max bytes-per-pixel)
+        this._directDraw = false; //Draw directly to the canvas without ordering
 
         this._zlibs = [];
         for (let i = 0; i < 4; i++) {
@@ -49,7 +49,7 @@ export default class UDPDecoder {
     _fillRect(x, y, width, height, data, display, depth, frame_id) {
 
         display.fillRect(x, y, width, height,
-            [data[13], data[14], data[15]], frame_id, false);
+            [data[13], data[14], data[15]], frame_id, this._directDraw);
 
         return true;
     }
@@ -60,7 +60,7 @@ export default class UDPDecoder {
             return false;
         }
 
-        display.imageRect(x, y, width, height, "image/jpeg", img, frame_id);
+        display.imageRect(x, y, width, height, "image/jpeg", img, frame_id, this._directDraw);
 
         return true;
     }
@@ -71,7 +71,7 @@ export default class UDPDecoder {
             return false;
         }
 
-        display.imageRect(x, y, width, height, "image/webp", img, frame_id);
+        display.imageRect(x, y, width, height, "image/webp", img, frame_id, this._directDraw);
 
         return true;
     }
@@ -151,7 +151,7 @@ export default class UDPDecoder {
             rgbx[i + 3] = 255;  // Alpha
         }
 
-        display.blitImage(x, y, width, height, rgbx, 0, frame_id, false);
+        display.blitImage(x, y, width, height, rgbx, 0, frame_id, this._directDraw);
 
         return true;
     }
@@ -223,7 +223,7 @@ export default class UDPDecoder {
             }
         }
 
-        display.blitImage(x, y, width, height, dest, 0, frame_id, false);
+        display.blitImage(x, y, width, height, dest, 0, frame_id, this._directDraw);
     }
 
     _paletteRect(x, y, width, height, data, palette, display, frame_id) {
@@ -238,7 +238,7 @@ export default class UDPDecoder {
             dest[i + 3] = 255;
         }
 
-        display.blitImage(x, y, width, height, dest, 0, frame_id, false);
+        display.blitImage(x, y, width, height, dest, 0, frame_id, this._directDraw);
     }
 
     _gradientFilter(streamId, x, y, width, height, data, display, depth, frame_id) {

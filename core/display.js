@@ -469,7 +469,6 @@ export default class Display {
             } else if (this._asyncFrameQueue[i][0] == 0) {
                 let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
                 this._asyncFrameQueue[i][0] = rect.frame_id;
-                //this._asyncFrameQueue[i][1] = rect_cnt;
                 this._asyncFrameQueue[i][2].push(rect);
                 this._asyncFrameQueue[i][3] = (rect_cnt == 1);
                 frameIx = i;

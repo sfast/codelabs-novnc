@@ -3087,15 +3087,15 @@ export default class RFB extends EventTargetMixin {
                 break;
             case encodings.encodingTight:
                 let decoder = this._decoders[encodings.encodingUDP];
-                //try {
+                try {
                     decoder.decodeRect(frame.x, frame.y,
                         frame.width, frame.height,
                         data, this._display,
                         this._fbDepth, frame_id);
-                /*} catch (err) {
+                } catch (err) {
                     this._fail("Error decoding rect: " + err);
                     return false;
-                }*/
+                }
                 break;
             default:
                 Log.Error("Invalid rect encoding via UDP: " + frame.encoding);

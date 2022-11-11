@@ -1436,27 +1436,22 @@ const UI = {
 
             //keep alive for websocket connection to stay open, since we may not control reverse proxies
             //send a keep alive within a window that we control
-            setInterval(function() {
-                if (currentEventCount!=UI.rfb.sentEventsCounter) {
-                    idleCounter=0;
-                    currentEventCount=UI.rfb.sentEventsCounter;
-                } else {
-                    idleCounter+=1;
-                    var idleDisconnect = parseFloat(UI.rfb.idleDisconnect);
-                    if ((idleCounter / 2) >= idleDisconnect) {
-                        Log.Info("Idle session timeout exceeded: " + (idleCounter/2) + "/" + idleDisconnect);
-                        //idle for longer than the limit, disconnect
-                        currentEventCount = -1;
-                        idleCounter = 0;
-                        parent.postMessage({ action: 'idle_session_timeout', value: 'Idle session timeout exceeded'}, '*' );
-                        //UI.rfb.disconnect();
-                    } else {
-                        //send a keep alive
-                        UI.rfb.sendKey(1, null, false);
-                        currentEventCount=UI.rfb.sentEventsCounter;
-                    }
+            UI._sessionTimeoutInterval = setInterval(function() {
+
+                const timeSinceLastActivityInS = (Date.now() - UI.rfb.lastActiveAt) / 1000;
+                let idleDisconnectInS = 1200; //20 minute default 
+                if (Number.isFinite(UI.rfb.idleDisconnect)) {
+                    idleDisconnectInS = parseFloat(UI.rfb.idleDisconnect) * 60;
                 }
-            }, 30000);
+                console.log("Current idle time " + timeSinceLastActivityInS + " max value is " + idleDisconnectInS); 
+
+                if (timeSinceLastActivityInS > idleDisconnectInS) {
+                    parent.postMessage({ action: 'idle_session_timeout', value: 'Idle session timeout exceeded'}, '*' );
+                } else {
+                    //send keep-alive
+                    UI.rfb.sendKey(1, null, false);
+                }
+            }, 5000);
         } else {
             document.getElementById('noVNC_status').style.visibility = "visible";
         }
@@ -1490,7 +1485,7 @@ const UI = {
 
         UI.updateVisualState('disconnecting');
 
-        // Don't display the connection settings until we're actually disconnected
+        clearInterval(UI._sessionTimeoutInterval);
     },
 
     reconnect() {
@@ -1679,9 +1674,10 @@ const UI = {
                     break;
 
                 case 'set_idle_timeout':
-                    const allowedTimeoutIterations = Math.ceil(event.data.value / 30000);
-                    UI.forceSetting('idle_disconnect', allowedTimeoutIterations, allowedTimeoutIterations);
-                    UI.rfb.idleDisconnect = allowedTimeoutIterations;
+                    //message value in seconds
+                    const idle_timeout_min = Math.ceil(event.data.value / 60);
+                    UI.forceSetting('idle_disconnect', idle_timeout_min, false);
+                    UI.rfb.idleDisconnect = idle_timeout_min;
                     console.log(`Updated the idle timeout to ${event.data.value}s`);
                     break;
             }

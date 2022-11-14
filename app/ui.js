@@ -1982,19 +1982,16 @@ const UI = {
             case 5: //extreme+lossless
                 UI.forceSetting('enable_qoi', true, false);
             case 4: //extreme
-                UI.forceSetting('dynamic_quality_min', 9);
-                UI.forceSetting('dynamic_quality_max', 9);
-                UI.forceSetting('framerate', 60);
-                UI.forceSetting('treat_lossless', 9);
-
-                // effectively disables video mode
-                UI.forceSetting('video_time', 100);
-                UI.forceSetting('video_area', 100);
-                // go ahead and set video mode settings, won't be used
-                UI.forceSetting('max_video_resolution_x', 1920);
-                UI.forceSetting('max_video_resolution_y', 1080);
                 UI.forceSetting('jpeg_video_quality', 9);
                 UI.forceSetting('webp_video_quality', 9);
+                UI.forceSetting('dynamic_quality_min', 8);
+                UI.forceSetting('dynamic_quality_max', 9);
+                UI.forceSetting('max_video_resolution_x', 1920);
+                UI.forceSetting('max_video_resolution_y', 1080);
+                UI.forceSetting('framerate', 60);
+                UI.forceSetting('treat_lossless', 8);
+                UI.forceSetting('video_time', 60);
+                UI.forceSetting('video_area', 100);
                 UI.forceSetting('video_scaling', 0);
                 UI.forceSetting('video_out_time', 3);
                 break;

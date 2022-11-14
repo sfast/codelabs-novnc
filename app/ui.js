@@ -231,7 +231,6 @@ const UI = {
         UI.initSetting('max_video_resolution_x', 960);
         UI.initSetting('max_video_resolution_y', 540);
         UI.initSetting('framerate', 30);
-        UI.saveSetting('framerate');
         UI.initSetting('compression', 2);
         UI.initSetting('shared', true);
         UI.initSetting('view_only', false);
@@ -1030,6 +1029,7 @@ const UI = {
         } else {
             UI.enableSetting(name);
         }
+        UI.saveSetting(name);
     },
 
     // Update cookie and form control setting. If value is not set, then
@@ -1147,7 +1147,6 @@ const UI = {
         UI.updateSetting('max_video_resolution_x', 960);
         UI.updateSetting('max_video_resolution_y', 540);
         UI.updateSetting('framerate', 30);
-        UI.saveSetting('framerate');
         UI.updateSetting('compression');
         UI.updateSetting('shared');
         UI.updateSetting('view_only');
@@ -1610,9 +1609,21 @@ const UI = {
                     }
                     break;
                 case 'setvideoquality':
-                    UI.forceSetting('video_quality', parseInt(event.data.value), false);
                     UI.forceSetting('enable_qoi', false, false); // QOI controlled via video quality mode when in iframe
-                    UI.updateQuality();
+                    if (event.data.qualityLevel) {
+                        //apply preset mode values, but don't apply to connection
+                        UI.forceSetting('video_quality', parseInt(event.data.qualityLevel), false);
+                        UI.updateQuality(false);
+                        //change to custom preset mode
+                        UI.forceSetting('video_quality', 10, false);
+                        //now make individual setting adjustments
+                        UI.forceSetting('framerate', event.data.frameRate, false);
+                        //now apply the final resulting settings
+                        UI.updateQuality(true);
+                    } else {
+                        UI.forceSetting('video_quality', parseInt(event.data.value), false);
+                        UI.updateQuality();
+                    }
                     break;
                 case 'enable_game_mode':
                     if (UI.rfb && !UI.rfb.pointerRelative) {
@@ -1658,18 +1669,6 @@ const UI = {
                         UI.toggleIMEMode();
                     }
                     break;
-                case 'disable_qoi':
-                    if(UI.getSetting('enable_qoi')) {
-                        UI.forceSetting('enable_qoi', false, false);
-                    }
-                    UI.toggleQOI();
-                    break;
-                case 'enable_qoi':
-                    if(!UI.getSetting('enable_qoi')) {
-                        UI.forceSetting('enable_qoi', true, false);
-                    }
-                    UI.toggleQOI();
-                    break;
                 case 'enable_webrtc':
                     if (!UI.getSetting('enable_webrtc')) {
                         UI.forceSetting('enable_webrtc', true, false);
@@ -1684,14 +1683,7 @@ const UI = {
                     break;
                 case 'resize':
                     UI.forceSetting('resize', event.data.value, false);
-                    if (UI.rfb) {
-                        if (event.data.value === "remote") {
-                            UI.rfb.resizeSession = true;
-                        } else {
-                            UI.applyResizeMode();
-                            UI.rfb.resizeSession = false;
-                        }
-                    }
+                    UI.applyResizeMode();
                     break;
                 case 'set_resolution':
                     if (UI.rfb) {
@@ -1703,20 +1695,10 @@ const UI = {
                         UI.rfb._resizeSession =  UI.getSetting('resize') === 'remote';
                     }
                     break;
-                case 'set_framerate':
-                    UI.forceSetting('framerate', event.data.value);
-                    UI.saveSetting('framerate');
-                    if (UI.rfb){
-                        UI.rfb.frameRate = parseInt(UI.getSetting('framerate'));
-                        UI.rfb.updateConnectionSettings();
-                    }
-                    break;
                 case 'set_perf_stats':
                     UI.forceSetting('enable_perf_stats', event.data.value, false);
                     UI.showStats();
                     break;
-
-
             }
         }
     },
@@ -1995,7 +1977,7 @@ const UI = {
  *    QUALITY
  * ------v------*/
 
-    updateQuality() {
+    updateQuality(apply=true) {
         let present_mode = parseInt(UI.getSetting('video_quality'));
 
         // video_quality preset values
@@ -2021,7 +2003,6 @@ const UI = {
                 UI.forceSetting('dynamic_quality_min', 9);
                 UI.forceSetting('dynamic_quality_max', 9);
                 UI.forceSetting('framerate', 60);
-                UI.saveSetting('framerate');
                 UI.forceSetting('treat_lossless', 9);
 
                 // effectively disables video mode
@@ -2043,7 +2024,6 @@ const UI = {
                 UI.forceSetting('max_video_resolution_x', 1920);
                 UI.forceSetting('max_video_resolution_y', 1080);
                 UI.forceSetting('framerate', 60);
-                UI.saveSetting('framerate');
                 UI.forceSetting('treat_lossless', 8);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2058,7 +2038,6 @@ const UI = {
                 UI.forceSetting('max_video_resolution_x', 960);
                 UI.forceSetting('max_video_resolution_y', 540);
                 UI.forceSetting('framerate', 22);
-                UI.saveSetting('framerate');
                 UI.forceSetting('treat_lossless', 7);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2075,7 +2054,6 @@ const UI = {
                 UI.forceSetting('max_video_resolution_x', 960);
                 UI.forceSetting('max_video_resolution_y', 540);
                 UI.forceSetting('framerate', 24);
-                UI.saveSetting('framerate');
                 UI.forceSetting('treat_lossless', 7);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2090,7 +2068,7 @@ const UI = {
             UI.forceSetting('enable_qoi', false, false);
         }
 
-        if (UI.rfb) {
+        if (UI.rfb && apply) {
             UI.rfb.qualityLevel = parseInt(UI.getSetting('quality'));
             UI.rfb.antiAliasing = parseInt(UI.getSetting('anti_aliasing'));
             UI.rfb.dynamicQualityMin = parseInt(UI.getSetting('dynamic_quality_min'));

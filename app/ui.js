@@ -1610,16 +1610,11 @@ const UI = {
                     break;
                 case 'setvideoquality':
                     UI.forceSetting('enable_qoi', false, false); // QOI controlled via video quality mode when in iframe
-                    if (event.data.qualityLevel) {
+                    if (event.data.qualityLevel !== undefined) {
                         //apply preset mode values, but don't apply to connection
                         UI.forceSetting('video_quality', parseInt(event.data.qualityLevel), false);
-                        UI.updateQuality(false);
-                        //change to custom preset mode
-                        UI.forceSetting('video_quality', 10, false);
-                        //now make individual setting adjustments
-                        UI.forceSetting('framerate', event.data.frameRate, false);
-                        //now apply the final resulting settings
-                        UI.updateQuality(true);
+                        // apply quality preset quality level and override some settings (fps)
+                        UI.updateQuality(event.data.frameRate);
                     } else {
                         UI.forceSetting('video_quality', parseInt(event.data.value), false);
                         UI.updateQuality();
@@ -1977,7 +1972,7 @@ const UI = {
  *    QUALITY
  * ------v------*/
 
-    updateQuality(apply=true) {
+    updateQuality(fps=null) {
         let present_mode = parseInt(UI.getSetting('video_quality'));
 
         // video_quality preset values
@@ -1995,14 +1990,13 @@ const UI = {
                 UI.enableSetting('framerate');
                 UI.enableSetting('video_scaling');
                 UI.enableSetting('video_out_time');
-                UI.showStatus("Refresh or reconnect to apply changes.");
-                return;
+                break;
             case 5: //extreme+lossless
                 UI.forceSetting('enable_qoi', true, false);
             case 4: //extreme
                 UI.forceSetting('dynamic_quality_min', 9);
                 UI.forceSetting('dynamic_quality_max', 9);
-                UI.forceSetting('framerate', 60);
+                UI.forceSetting('framerate', (fps) ? fps : 60);
                 UI.forceSetting('treat_lossless', 9);
 
                 // effectively disables video mode
@@ -2023,7 +2017,7 @@ const UI = {
                 UI.forceSetting('dynamic_quality_max', 9);
                 UI.forceSetting('max_video_resolution_x', 1920);
                 UI.forceSetting('max_video_resolution_y', 1080);
-                UI.forceSetting('framerate', 60);
+                UI.forceSetting('framerate', (fps) ? fps : 60);
                 UI.forceSetting('treat_lossless', 8);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2037,7 +2031,7 @@ const UI = {
                 UI.forceSetting('dynamic_quality_max', 7);
                 UI.forceSetting('max_video_resolution_x', 960);
                 UI.forceSetting('max_video_resolution_y', 540);
-                UI.forceSetting('framerate', 22);
+                UI.forceSetting('framerate', (fps) ? fps : 24);
                 UI.forceSetting('treat_lossless', 7);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2053,7 +2047,7 @@ const UI = {
                 UI.forceSetting('dynamic_quality_max', 9);
                 UI.forceSetting('max_video_resolution_x', 960);
                 UI.forceSetting('max_video_resolution_y', 540);
-                UI.forceSetting('framerate', 24);
+                UI.forceSetting('framerate', (fps) ? fps : 24);
                 UI.forceSetting('treat_lossless', 7);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2068,7 +2062,7 @@ const UI = {
             UI.forceSetting('enable_qoi', false, false);
         }
 
-        if (UI.rfb && apply) {
+        if (UI.rfb) {
             UI.rfb.qualityLevel = parseInt(UI.getSetting('quality'));
             UI.rfb.antiAliasing = parseInt(UI.getSetting('anti_aliasing'));
             UI.rfb.dynamicQualityMin = parseInt(UI.getSetting('dynamic_quality_min'));

@@ -245,7 +245,6 @@ const UI = {
         UI.initSetting('enable_perf_stats', false);
         UI.initSetting('virtual_keyboard_visible', false);
         UI.initSetting('enable_ime', false);
-        UI.initSetting('enable_qoi', false);
         UI.initSetting('enable_webrtc', false);
         UI.toggleKeyboardControls();
 
@@ -559,8 +558,6 @@ const UI = {
         UI.addSettingChangeHandler('virtual_keyboard_visible', UI.toggleKeyboardControls);
         UI.addSettingChangeHandler('enable_ime');
         UI.addSettingChangeHandler('enable_ime', UI.toggleIMEMode);
-        UI.addSettingChangeHandler('enable_qoi');
-        UI.addSettingChangeHandler('enable_qoi', UI.toggleQOI);
         UI.addSettingChangeHandler('enable_webrtc');
         UI.addSettingChangeHandler('enable_webrtc', UI.toggleWebRTC);
     },
@@ -1403,7 +1400,6 @@ const UI = {
         UI.rfb.clipboardSeamless = UI.getSetting('clipboard_seamless');
         UI.rfb.keyboard.enableIME = UI.getSetting('enable_ime');
         UI.rfb.clipboardBinary = supportsBinaryClipboard() && UI.rfb.clipboardSeamless;
-        UI.rfb.enableQOI = UI.getSetting('enable_qoi');
         UI.rfb.enableWebRTC = UI.getSetting('enable_webrtc');
         UI.rfb.mouseButtonMapper = UI.initMouseButtonMapper();
 
@@ -1609,7 +1605,6 @@ const UI = {
                     }
                     break;
                 case 'setvideoquality':
-                    UI.forceSetting('enable_qoi', false, false); // QOI controlled via video quality mode when in iframe
                     if (event.data.qualityLevel !== undefined) {
                         //apply preset mode values, but don't apply to connection
                         UI.forceSetting('video_quality', parseInt(event.data.qualityLevel), false);
@@ -1972,8 +1967,9 @@ const UI = {
  *    QUALITY
  * ------v------*/
 
-    updateQuality(fps=null) {
+    updateQuality(fps) {
         let present_mode = parseInt(UI.getSetting('video_quality'));
+        let enable_qoi = false;
 
         // video_quality preset values
         switch (present_mode) {
@@ -1991,18 +1987,30 @@ const UI = {
                 UI.enableSetting('video_scaling');
                 UI.enableSetting('video_out_time');
                 break;
-            case 5: //extreme+lossless
-                UI.forceSetting('enable_qoi', true, false);
-            case 4: //extreme
+            case 5: //lossless
+                enable_qoi = true;
+                fps = (fps && Number.isFinite(fps)) ? fps : 60;
                 UI.forceSetting('dynamic_quality_min', 9);
                 UI.forceSetting('dynamic_quality_max', 9);
-                UI.forceSetting('framerate', (fps) ? fps : 60);
+                UI.forceSetting('framerate', fps);
                 UI.forceSetting('treat_lossless', 9);
-
-                // effectively disables video mode
                 UI.forceSetting('video_time', 100);
                 UI.forceSetting('video_area', 100);
-                // go ahead and set video mode settings, won't be used
+                UI.forceSetting('max_video_resolution_x', 1920);
+                UI.forceSetting('max_video_resolution_y', 1080);
+                UI.forceSetting('jpeg_video_quality', 9);
+                UI.forceSetting('webp_video_quality', 9);
+                UI.forceSetting('video_scaling', 0);
+                UI.forceSetting('video_out_time', 3);
+                break;
+            case 4: //extreme
+                fps = (fps && Number.isFinite(fps)) ? fps : 60;
+                UI.forceSetting('dynamic_quality_min', 9);
+                UI.forceSetting('dynamic_quality_max', 9);
+                UI.forceSetting('framerate', fps);
+                UI.forceSetting('treat_lossless', 9);
+                UI.forceSetting('video_time', 100);
+                UI.forceSetting('video_area', 100);
                 UI.forceSetting('max_video_resolution_x', 1920);
                 UI.forceSetting('max_video_resolution_y', 1080);
                 UI.forceSetting('jpeg_video_quality', 9);
@@ -2011,13 +2019,14 @@ const UI = {
                 UI.forceSetting('video_out_time', 3);
                 break;
             case 3: // high
+                fps = (fps && Number.isFinite(fps)) ? fps : 60;
                 UI.forceSetting('jpeg_video_quality', 8);
                 UI.forceSetting('webp_video_quality', 8);
                 UI.forceSetting('dynamic_quality_min', 7);
                 UI.forceSetting('dynamic_quality_max', 9);
                 UI.forceSetting('max_video_resolution_x', 1920);
                 UI.forceSetting('max_video_resolution_y', 1080);
-                UI.forceSetting('framerate', (fps) ? fps : 60);
+                UI.forceSetting('framerate', fps);
                 UI.forceSetting('treat_lossless', 8);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2025,13 +2034,14 @@ const UI = {
                 UI.forceSetting('video_out_time', 3);
                 break;
             case 1: // low, resolution capped at 720p keeping aspect ratio
+                fps = (fps && Number.isFinite(fps)) ? fps : 24;
                 UI.forceSetting('jpeg_video_quality', 5);
                 UI.forceSetting('webp_video_quality', 4);
                 UI.forceSetting('dynamic_quality_min', 3);
                 UI.forceSetting('dynamic_quality_max', 7);
                 UI.forceSetting('max_video_resolution_x', 960);
                 UI.forceSetting('max_video_resolution_y', 540);
-                UI.forceSetting('framerate', (fps) ? fps : 24);
+                UI.forceSetting('framerate', fps);
                 UI.forceSetting('treat_lossless', 7);
                 UI.forceSetting('video_time', 5);
                 UI.forceSetting('video_area', 65);
@@ -2041,6 +2051,7 @@ const UI = {
             case 2: // medium
             case 0: // static resolution, but same settings as medium
             default:
+                fps = (fps && Number.isFinite(fps)) ? fps : 24;
                 UI.forceSetting('jpeg_video_quality', 7);
                 UI.forceSetting('webp_video_quality', 7);
                 UI.forceSetting('dynamic_quality_min', 4);
@@ -2054,12 +2065,6 @@ const UI = {
                 UI.forceSetting('video_scaling', 0);
                 UI.forceSetting('video_out_time', 3);
                 break;
-        }
-
-        //force QOI off if mode is below extreme
-        if (present_mode < 4 && UI.getSetting('enable_qoi')) {
-            UI.showStatus("Lossless QOI disabled when not in extreme quality mode.");
-            UI.forceSetting('enable_qoi', false, false);
         }
 
         if (UI.rfb) {
@@ -2079,7 +2084,7 @@ const UI = {
             UI.rfb.frameRate = parseInt(UI.getSetting('framerate'));
             UI.rfb.enableWebP = UI.getSetting('enable_webp');
             UI.rfb.videoQuality = parseInt(UI.getSetting('video_quality'));
-            UI.rfb.enableQOI = UI.getSetting('enable_qoi');
+            UI.rfb.enableQOI = enable_qoi;
 
             // Gracefully update settings server side
             UI.rfb.updateConnectionSettings();
@@ -2137,23 +2142,6 @@ const UI = {
             }
             UI.updateQuality();
         }
-    },
-
-    toggleQOI() {
-      if(UI.rfb) {
-          if(UI.getSetting('enable_qoi')) {
-              UI.rfb.enableQOI = true;
-              if (!UI.rfb.enableQOI) {
-                UI.showStatus("Enabling QOI failed, browser may not be compatible with WASM and/or Workers.");
-                UI.forceSetting('enable_qoi', false, false);
-                return;
-              }
-              UI.forceSetting('video_quality', 4, false); //force into extreme quality mode
-          } else {
-              UI.rfb.enableQOI = false;
-          }
-          UI.updateQuality();
-      }
     },
 
     showKeyboardControls() {

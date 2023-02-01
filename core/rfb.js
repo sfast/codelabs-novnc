@@ -1330,6 +1330,7 @@ export default class RFB extends EventTargetMixin {
         var x = this.forcedResolutionX ||  this._screen.offsetWidth;
         var y = this.forcedResolutionY || this._screen.offsetHeight;
         var scale = 0; // 0=auto
+        var supportedScales = [1.25, 1.5, 1.75, 2, 2.25];
         try {
             if (x > 1280 && limited && this.videoQuality == 1) {
                 var ratio = y / x;
@@ -1351,11 +1352,16 @@ export default class RFB extends EventTargetMixin {
                 y = y * scaleRatio;
                 scale = 1 / scaleRatio;
                 Log.Info('Small device with hDPI screen detected, auto scaling at ' + scaleRatio + ' to ' + x + 'x' + y);
+            } else if (supportedScales.includes(window.devicePixelRatio)) {
+                // standard windows scaling ratios
+                x = x * window.devicePixelRatio;
+                y = y * window.devicePixelRatio;
+                scale = 1 / window.devicePixelRatio;
             }
         } catch (err) {
             Log.Debug(err);
         }
-
+        
         return { w: x,
                  h: y,
                  scale: scale };

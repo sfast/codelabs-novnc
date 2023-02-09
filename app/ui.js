@@ -1782,6 +1782,10 @@ const UI = {
  * ------v------*/
 
     toggleFullscreen() {
+        if (WebUtil.isInsideKasmVDI()) {
+             parent.postMessage({ action: 'fullscreen', value: 'Fullscreen clicked'}, '*' );
+             return;
+        }
         if (document.fullscreenElement || // alternative standard method
             document.mozFullScreenElement || // currently working methods
             document.webkitFullscreenElement ||

@@ -1330,7 +1330,7 @@ export default class RFB extends EventTargetMixin {
         var x = this.forcedResolutionX ||  this._screen.offsetWidth;
         var y = this.forcedResolutionY || this._screen.offsetHeight;
         var scale = 0; // 0=auto
-        var supportedScales = [1.25, 1.5, 1.75, 2, 2.25];
+        var supportedScales = [1.25, 1.5];
         try {
             if (x > 1280 && limited && this.videoQuality == 1) {
                 var ratio = y / x;

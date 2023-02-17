@@ -377,6 +377,23 @@ export default class Display {
         });
     }
 
+    canvasRect(x, y, width, height, img, frame_id) {
+        /* The internal logic cannot handle empty images, so bail early */
+        if ((width === 0) || (height === 0)) {
+            return;
+        }
+
+        this._asyncRenderQPush({
+            'type': 'canvas',
+            'img': img,
+            'x': x,
+            'y': y,
+            'width': width,
+            'height': height,
+            'frame_id': frame_id
+        });
+    }
+
     blitImage(x, y, width, height, arr, offset, frame_id, fromQueue) {
         if (!fromQueue) {
             // NB(directxman12): it's technically more performant here to use preallocated arrays,
@@ -588,6 +605,9 @@ export default class Display {
                         this.blitQoi(a.x, a.y, a.width, a.height, a.data, 0, a.frame_id, true);
                         break;
                     case 'img':
+                        this.drawImage(a.img, a.x, a.y, a.width, a.height);
+                        break;
+                    case 'canvas': // separate from img since it doesn't have "complete"
                         this.drawImage(a.img, a.x, a.y, a.width, a.height);
                         break;
                 }

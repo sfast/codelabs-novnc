@@ -586,6 +586,8 @@ export default class Display {
             if (this._asyncFrameQueue.length < this._maxAsyncFrameQueue) {
                 this._asyncFrameQueue.push([ 0, 0, [], false, 0 ]);
             }
+
+            let transparent_rects = [];
             
             //render the selected frame
             for (let i = 0; i < frame.length; i++) {
@@ -607,11 +609,18 @@ export default class Display {
                     case 'img':
                         this.drawImage(a.img, a.x, a.y, a.width, a.height);
                         break;
-                    case 'canvas': // separate from img since it doesn't have "complete"
-                        this.drawImage(a.img, a.x, a.y, a.width, a.height);
+                    case 'canvas':
+                        transparent_rects.push(a);
                         break;
                 }
             }
+
+            //rects with transparency get applied last
+            for (let i = 0; i < transparent_rects.length; i++) {
+                const a = transparent_rects[i];
+                this.drawImage(a.img, a.x, a.y, a.width, a.height);
+            }
+
             this._flipCnt += 1;
 
             if (this._flushing) {

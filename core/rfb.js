@@ -240,6 +240,34 @@ export default class RFB extends EventTargetMixin {
         this._canvas.tabIndex = -1;
         this._canvas.overflow = 'hidden';
         this._screen.appendChild(this._canvas);
+        // Create Audio Dom element
+        this._audio = new Audio();
+        this._audio.autoplay = true;
+        this._audio.load();
+        this._audio.play().catch(function() {});
+        
+        this._audio_ready = false;
+        this._audio_mime = 'audio/mpeg;';
+        if (window.MediaSource || window.WebKitMediaSource) {
+            window.MediaSource = window.MediaSource || window.WebKitMediaSource;
+            this._audio_source = new window.MediaSource();
+            this._audio.src = URL.createObjectURL(this._audio_source);
+            this._audio_source.addEventListener('sourceopen', function(e) { 
+                this._audio_queue = [];
+                this._audio_buffer = this._audio_source.addSourceBuffer(this._audio_mime);
+                this._audio_buffer.mode = 'sequence';
+                this._audio_source.duration = Infinity;
+                this._audio_buffer.addEventListener('error', function(err) {
+                    console.log('Audio Buffer Error: ' + err);
+                });
+                this._audio_buffer.addEventListener('updateend', function() {
+                    if (this._audio_queue.length > 0 && !this._audio_buffer.updating) {
+                        this._audio_buffer.appendBuffer(this._audio_queue.shift());
+                    }
+                }.bind(this));
+                this._audio_ready = true;
+            }.bind(this) );
+        }
 
         // Cursor
         this._cursor = new Cursor();
@@ -1162,6 +1190,8 @@ export default class RFB extends EventTargetMixin {
                 }
             }
         }
+
+        setTimeout(function() {  RFB.messages.sendSubscribeUnixRelay(this._sock, 'audio_out') }.bind(this), 3000);
 
 	    if (this._useUdp) {
             setTimeout(function() { this._sendUdpUpgrade() }.bind(this), 3000);
@@ -3214,8 +3244,34 @@ export default class RFB extends EventTargetMixin {
         if (this._sock.rQwait("UnixRelay data", len, 6 + namelen)) { return false; }
 
         const payload = this._sock.rQshiftBytes(len);
+        var buffer = new ArrayBuffer(payload.length);
+        var view = new Uint8Array(buffer);
+        for (var i=0; i< buffer.length; i++) {
+            view[i] = buffer[i];
+        }
 
-        console.log("Received unix relay data, " + len + " bytes, " + payload);
+        
+
+        //console.log("Received unix relay data, " + len + " bytes, " + payload);
+        if (this._audio_ready) {
+            this._audio_queue.push(buffer);
+            if (!this._audio_buffer.updating) {
+                this._audio_buffer.appendBuffer(this._audio_queue.shift());
+            }
+        }
+        
+        /*
+        if (!this._audio_start_time) {
+            this._audio_start_time = this._audio_context.currentTime;
+        }
+        this._audio_context.decodeAudioData(buffer, function(buffer) {
+            var source = this._audio_context.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this._audio_context.destination);
+            source.start(this._audio_start_time);
+            this._audio_start_time + source.buffer.duration;
+        }, function(e) { console.log("Audio error: " + e) });
+        */
     }
 
     _framebufferUpdate() {

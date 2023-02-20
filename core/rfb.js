@@ -143,6 +143,7 @@ export default class RFB extends EventTargetMixin {
         this._forcedResolutionY = null;
         this._clipboardBinary = true;
         this._useUdp = true;
+        this._hiDpi = false;
         this._enableQOI = false;
         this.TransitConnectionStates = {
             Tcp: Symbol("tcp"),
@@ -753,6 +754,14 @@ export default class RFB extends EventTargetMixin {
         }
     }
 
+    get enableHiDpi() { return this._hiDpi; }
+    set enableHiDpi(value) {
+        if (value !== this._hiDpi) {
+            this._hiDpi = value;
+            this._requestRemoteResize();
+        }
+    }
+
     // ===== PUBLIC METHODS =====
 
     /*
@@ -1312,7 +1321,6 @@ export default class RFB extends EventTargetMixin {
             !this._supportsSetDesktopSize) {
             return;
         }
-
         const size = this._screenSize();
         RFB.messages.setDesktopSize(this._sock,
                                     Math.floor(size.w), Math.floor(size.h),
@@ -1330,7 +1338,6 @@ export default class RFB extends EventTargetMixin {
         var x = this.forcedResolutionX ||  this._screen.offsetWidth;
         var y = this.forcedResolutionY || this._screen.offsetHeight;
         var scale = 0; // 0=auto
-        var supportedScales = [1.25, 1.5];
         try {
             if (x > 1280 && limited && this.videoQuality == 1) {
                 var ratio = y / x;
@@ -1341,6 +1348,10 @@ export default class RFB extends EventTargetMixin {
             else if (limited && this.videoQuality == 0){
                 x = 1280;
                 y = 720;
+            } else if (this._hiDpi == true) {
+                x = x * window.devicePixelRatio;
+                y = y * window.devicePixelRatio;
+                scale = 1 / window.devicePixelRatio;
             } else if (this._display.antiAliasing === 0 && window.devicePixelRatio > 1 && x < 1000 && x > 0) {
                 // small device with high resolution, browser is essentially zooming greater than 200%
                 Log.Info('Device Pixel ratio: ' + window.devicePixelRatio + ' Reported Resolution: ' + x + 'x' + y); 
@@ -1352,11 +1363,6 @@ export default class RFB extends EventTargetMixin {
                 y = y * scaleRatio;
                 scale = 1 / scaleRatio;
                 Log.Info('Small device with hDPI screen detected, auto scaling at ' + scaleRatio + ' to ' + x + 'x' + y);
-            } else if (supportedScales.includes(window.devicePixelRatio)) {
-                // standard windows scaling ratios
-                x = x * window.devicePixelRatio;
-                y = y * window.devicePixelRatio;
-                scale = 1 / window.devicePixelRatio;
             }
         } catch (err) {
             Log.Debug(err);

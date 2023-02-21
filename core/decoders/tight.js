@@ -27,7 +27,6 @@ export default class TightDecoder {
             this._zlibs[i] = new Inflator();
         }
         this._itzlib = new Inflator();
-        this._itcanvas = document.createElement('canvas');
     }
 
     // ===== PROPERTIES =====
@@ -219,11 +218,8 @@ export default class TightDecoder {
             rgba[d + 7] = a * (p & 240) / 255;
         }
 
-        this._itcanvas.width = width;
-        this._itcanvas.height = height;
         let img = new ImageData(new Uint8ClampedArray(rgba.buffer, 0, width * height * 4), width, height);
-        this._itcanvas.getContext('2d').putImageData(img, 0, 0);
-        display.canvasRect(x, y, width, height, this._itcanvas, frame_id);
+        display.canvasRect(x, y, width, height, img, frame_id);
 
         return true;
     }

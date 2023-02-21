@@ -30,6 +30,8 @@ export default class Display {
         this._maxAsyncFrameQueue = 3;
         this._clearAsyncQueue();
 
+        this._itcanvas = document.createElement('canvas');
+
         this._flushing = false;
 
         // the full frame buffer (logical canvas) size
@@ -618,7 +620,12 @@ export default class Display {
             //rects with transparency get applied last
             for (let i = 0; i < transparent_rects.length; i++) {
                 const a = transparent_rects[i];
-                this.drawImage(a.img, a.x, a.y, a.width, a.height);
+
+                this._itcanvas.width = a.width;
+                this._itcanvas.height = a.height;
+                this._itcanvas.getContext('2d').putImageData(a.img, 0, 0);
+
+                this.drawImage(this._itcanvas, a.x, a.y, a.width, a.height);
             }
 
             this._flipCnt += 1;

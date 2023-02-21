@@ -219,7 +219,7 @@ export default class TightDecoder {
         }
 
         let img = new ImageData(new Uint8ClampedArray(rgba.buffer, 0, width * height * 4), width, height);
-        display.canvasRect(x, y, width, height, img, frame_id);
+        display.transparentRect(x, y, width, height, img, frame_id);
 
         return true;
     }

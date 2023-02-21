@@ -379,21 +379,29 @@ export default class Display {
         });
     }
 
-    canvasRect(x, y, width, height, img, frame_id) {
+    transparentRect(x, y, width, height, img, frame_id) {
         /* The internal logic cannot handle empty images, so bail early */
         if ((width === 0) || (height === 0)) {
             return;
         }
 
-        this._asyncRenderQPush({
-            'type': 'canvas',
-            'img': img,
+        var rect = {
+            'type': 'transparent',
+            'img': null,
             'x': x,
             'y': y,
             'width': width,
             'height': height,
             'frame_id': frame_id
-        });
+        }
+
+        let imageBmpPromise = createImageBitmap(img);
+        imageBmpPromise.then( function(img) {
+            rect.img = img;
+            rect.img.complete = true;
+        }.bind(rect) );
+
+        this._asyncRenderQPush(rect);
     }
 
     blitImage(x, y, width, height, arr, offset, frame_id, fromQueue) {
@@ -611,7 +619,7 @@ export default class Display {
                     case 'img':
                         this.drawImage(a.img, a.x, a.y, a.width, a.height);
                         break;
-                    case 'canvas':
+                    case 'transparent':
                         transparent_rects.push(a);
                         break;
                 }
@@ -620,12 +628,10 @@ export default class Display {
             //rects with transparency get applied last
             for (let i = 0; i < transparent_rects.length; i++) {
                 const a = transparent_rects[i];
-
-                this._itcanvas.width = a.width;
-                this._itcanvas.height = a.height;
-                this._itcanvas.getContext('2d').putImageData(a.img, 0, 0);
-
-                this.drawImage(this._itcanvas, a.x, a.y, a.width, a.height);
+                
+                if (a.img) {
+                    this.drawImage(a.img, a.x, a.y, a.width, a.height);
+                }
             }
 
             this._flipCnt += 1;

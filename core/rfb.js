@@ -37,6 +37,7 @@ import TightDecoder from "./decoders/tight.js";
 import TightPNGDecoder from "./decoders/tightpng.js";
 import UDPDecoder from './decoders/udp.js';
 import { toSignedRelative16bit } from './util/int.js';
+import WebAudio from './audio/webaudio.js';
 
 // How many seconds to wait for a disconnect to finish
 const DISCONNECT_TIMEOUT = 3;
@@ -240,6 +241,7 @@ export default class RFB extends EventTargetMixin {
         this._canvas.tabIndex = -1;
         this._canvas.overflow = 'hidden';
         this._screen.appendChild(this._canvas);
+
         // Create Audio Dom element
         this._audio = new Audio();
         this._audio.autoplay = true;
@@ -247,7 +249,8 @@ export default class RFB extends EventTargetMixin {
         this._audio.play().catch(function() {});
         
         this._audio_ready = false;
-        this._audio_mime = 'audio/mpeg;';
+        //this._audio_mime = 'audio/mpeg;';
+        /*this._audio_mime = 'audio/webm; codecs="opus"';
         if (window.MediaSource || window.WebKitMediaSource) {
             window.MediaSource = window.MediaSource || window.WebKitMediaSource;
             this._audio_source = new window.MediaSource();
@@ -260,6 +263,9 @@ export default class RFB extends EventTargetMixin {
                 this._audio_buffer.addEventListener('error', function(err) {
                     console.log('Audio Buffer Error: ' + err);
                 });
+                this._audio_buffer.addEventListener('abort', function(err) {
+                    console.log('Audio Buffer Abort: ' + err);
+                });
                 this._audio_buffer.addEventListener('updateend', function() {
                     if (this._audio_queue.length > 0 && !this._audio_buffer.updating) {
                         this._audio_buffer.appendBuffer(this._audio_queue.shift());
@@ -267,7 +273,10 @@ export default class RFB extends EventTargetMixin {
                 }.bind(this));
                 this._audio_ready = true;
             }.bind(this) );
-        }
+        } */
+        //this._audio = new PCMPlayer();
+        this._audio = new WebAudio();
+
 
         // Cursor
         this._cursor = new Cursor();
@@ -3250,15 +3259,19 @@ export default class RFB extends EventTargetMixin {
             view[i] = buffer[i];
         }
 
-        
+        this._audio.websocketDataArrived(payload);
+        //this._audio.feed(payload);
 
         //console.log("Received unix relay data, " + len + " bytes, " + payload);
+        /*
         if (this._audio_ready) {
-            this._audio_queue.push(buffer);
+            
             if (!this._audio_buffer.updating) {
-                this._audio_buffer.appendBuffer(this._audio_queue.shift());
+                this._audio_buffer.appendBuffer(buffer);
+            } else {
+                this._audio_queue.push(buffer);
             }
-        }
+        }*/
         
         /*
         if (!this._audio_start_time) {

@@ -50,7 +50,7 @@
     <script src="vendor/interact.min.js"></script>
 
     <!-- Stylesheets -->
-    <!--link rel="stylesheet" href="app/styles/base.css">
+    <link rel="stylesheet" href="app/styles/base.css">
 
     <script src="app/error-handler.js"></script>
 
@@ -69,7 +69,7 @@
         }
     </script>
 
-    <script type="module" crossorigin="use-credentials" src="app/ui.js"></script-->
+    <script type="module" crossorigin="use-credentials" src="app/ui.js"></script>
 </head>
 
 <body>
@@ -196,6 +196,14 @@
                         id="noVNC_game_mode_button" class="noVNC_button"
                         title="Game Pointer Mode">
                     Game Cursor Mode
+                </div>
+
+                <!-- Toggle game mode -->
+                <div class="noVNC_button_div noVNC_hide_on_disconnect" >
+                    <input type="image" alt="Sound" src="app/images/enable-sound.svg"
+                        id="noVNC_audio_enable" class="noVNC_button"
+                        title="Enable Audio">
+                    Enable Audio
                 </div>
 
                 <!-- Settings -->

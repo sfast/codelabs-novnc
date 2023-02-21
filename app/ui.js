@@ -31,8 +31,8 @@ window.updateSetting = (name, value) => {
     }
 }
 
-import "core-js/stable";
-import "regenerator-runtime/runtime";
+//import "core-js/stable";
+//import "regenerator-runtime/runtime";
 import * as Log from '../core/util/logging.js';
 import _, { l10n } from './localization.js';
 import { isTouchDevice, isSafari, hasScrollbarGutter, dragThreshold, supportsBinaryClipboard, isFirefox, isWindows, isIOS, supportsPointerLock }
@@ -129,6 +129,7 @@ const UI = {
         UI.addGamingHandlers();
         UI.addMachineHandlers();
         UI.addConnectionControlHandlers();
+        UI.addAudioHandlers();
         UI.addClipboardHandlers();
         UI.addSettingsHandlers();
         document.getElementById("noVNC_status")
@@ -469,6 +470,14 @@ const UI = {
 
         document.getElementById("noVNC_credentials_button")
             .addEventListener('click', UI.setCredentials);
+    },
+
+    addAudioHandlers() {
+        UI.addClickHandle('noVNC_audio_enable', function() {
+            if (UI.rfb) {
+                UI.rfb._audio.start();
+            }
+        }.bind(UI));
     },
 
     addClipboardHandlers() {

@@ -30,8 +30,6 @@ export default class Display {
         this._maxAsyncFrameQueue = 3;
         this._clearAsyncQueue();
 
-        this._itcanvas = document.createElement('canvas');
-
         this._flushing = false;
 
         // the full frame buffer (logical canvas) size

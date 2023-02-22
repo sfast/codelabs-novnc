@@ -577,7 +577,10 @@ export default class Display {
                     this._asyncFrameQueue[frameIx][2][currentFrameRectIx].img.addEventListener('load', () => { this._asyncFrameComplete(frameIx); });
                     this._asyncFrameQueue[frameIx][4] = currentFrameRectIx;
                     return;
+                } else if (this._asyncFrameQueue[frameIx][2][currentFrameRectIx].type == 'transparent' && !this._asyncFrameQueue[frameIx][2][currentFrameRectIx].img) {
+                    return;
                 }
+
                 currentFrameRectIx++;
             }
         }

@@ -92,16 +92,13 @@ export default class WebAudio {
         }
 
         if (!this.audio.error) {
-            console.log('playing from buffer: ' + this.queue.length);
             if (!this.queue.length) {
                 console.log('null queue');
             }
             this.buffer.appendBuffer(this.queue);
             this.queue = null;
             
-            this.audio.play().then(function() {
-                console.log("Playback started.");
-            }).catch(function(e) {
+            this.audio.play().catch(function(e) {
                 console.log("Playback failed: " + e);
             });
 
@@ -122,8 +119,8 @@ export default class WebAudio {
 
     //synchronizes the current time of the stream with the server
     syncInterval() {
-        //if (!(this.audio && this.audio.currentTime && this.audio.currentTime > 1 && this.buffer && this.buffer.buffered && this.buffer.buffered.length > 1)) {
-        if (!(this.audio && this.audio.currentTime && this.buffer && this.buffer.buffered && this.buffer.buffered.length > 1)) {
+        if (!(this.audio && this.audio.currentTime && this.audio.currentTime > 1 && this.buffer && this.buffer.buffered && this.buffer.buffered.length > 1)) {
+        //if (!(this.audio && this.audio.currentTime && this.buffer && this.buffer.buffered && this.buffer.buffered.length > 1)) {
             return;
         }
 

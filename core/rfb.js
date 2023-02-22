@@ -3260,6 +3260,7 @@ export default class RFB extends EventTargetMixin {
         }
 
         this._audio.websocketDataArrived(payload);
+        
         //this._audio.feed(payload);
 
         //console.log("Received unix relay data, " + len + " bytes, " + payload);

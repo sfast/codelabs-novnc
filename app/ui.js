@@ -245,7 +245,7 @@ const UI = {
         UI.initSetting('virtual_keyboard_visible', false);
         UI.initSetting('enable_ime', false);
         UI.initSetting('enable_webrtc', false);
-        UI.initSetting('toggle_hidpi', false);
+        UI.initSetting('enable_hidpi', false);
         UI.toggleKeyboardControls();
 
         if (WebUtil.isInsideKasmVDI()) {
@@ -560,8 +560,8 @@ const UI = {
         UI.addSettingChangeHandler('enable_ime', UI.toggleIMEMode);
         UI.addSettingChangeHandler('enable_webrtc');
         UI.addSettingChangeHandler('enable_webrtc', UI.toggleWebRTC);
-        UI.addSettingChangeHandler('toggle_hidpi');
-        UI.addSettingChangeHandler('toggle_hidpi', UI.toggleHiDpi);
+        UI.addSettingChangeHandler('enable_hidpi');
+        UI.addSettingChangeHandler('enable_hidpi', UI.enableHiDpi);
     },
 
     addFullscreenHandlers() {
@@ -1409,7 +1409,7 @@ const UI = {
         UI.rfb.keyboard.enableIME = UI.getSetting('enable_ime');
         UI.rfb.clipboardBinary = supportsBinaryClipboard() && UI.rfb.clipboardSeamless;
         UI.rfb.enableWebRTC = UI.getSetting('enable_webrtc');
-        UI.rfb.enableHiDpi = UI.getSetting('toggle_hidpi');
+        UI.rfb.enableHiDpi = UI.getSetting('enable_hidpi');
         UI.rfb.mouseButtonMapper = UI.initMouseButtonMapper();
         if (UI.rfb.videoQuality === 5) {
             UI.rfb.enableQOI = true;
@@ -1704,9 +1704,9 @@ const UI = {
                     UI.rfb.idleDisconnect = idle_timeout_min;
                     console.log(`Updated the idle timeout to ${event.data.value}s`);
                     break;
-                case 'toggle_hidpi':
-                    UI.forceSetting('toggle_hidpi', event.data.value, false);
-                    UI.toggleHiDpi();
+                case 'enable_hidpi':
+                    UI.forceSetting('enable_hidpi', event.data.value, false);
+                    UI.enableHiDpi();
                     break;
             }
         }
@@ -1850,7 +1850,7 @@ const UI = {
         UI.rfb.idleDisconnect = UI.getSetting('idle_disconnect');
         UI.rfb.videoQuality = UI.getSetting('video_quality');
         UI.rfb.enableWebP = UI.getSetting('enable_webp');
-        UI.rfb.enableHiDpi = UI.getSetting('toggle_hidpi');
+        UI.rfb.enableHiDpi = UI.getSetting('enable_hidpi');
     },
 
 /* ------^-------
@@ -2109,7 +2109,7 @@ const UI = {
             UI.rfb.enableWebP = UI.getSetting('enable_webp');
             UI.rfb.videoQuality = parseInt(UI.getSetting('video_quality'));
             UI.rfb.enableQOI = enable_qoi;
-            UI.rfb.enableHiDpi = UI.getSetting('toggle_hidpi');
+            UI.rfb.enableHiDpi = UI.getSetting('enable_hidpi');
 
             // Gracefully update settings server side
             UI.rfb.updateConnectionSettings();
@@ -2169,9 +2169,9 @@ const UI = {
         }
     },
 
-    toggleHiDpi() {
+    enableHiDpi() {
         if (UI.rfb) {
-            if (UI.getSetting('toggle_hidpi')) {
+            if (UI.getSetting('enable_hidpi')) {
                 UI.rfb.enableHiDpi = true;
             } else {
                 UI.rfb.enableHiDpi = false;

@@ -3254,10 +3254,10 @@ export default class RFB extends EventTargetMixin {
 
         const payload = this._sock.rQshiftBytes(len);
         var buffer = new ArrayBuffer(payload.length);
-        var view = new Uint8Array(buffer);
-        for (var i=0; i< buffer.length; i++) {
-            view[i] = buffer[i];
-        }
+        //var view = new Uint8Array(buffer);
+        //for (var i=0; i< buffer.length; i++) {
+        //    view[i] = buffer[i];
+        //}
 
         this._audio.websocketDataArrived(payload);
         

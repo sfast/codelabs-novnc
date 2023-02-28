@@ -14,7 +14,7 @@ export default class WebAudio {
         setInterval(() => this.syncInterval(), this.syncLagInterval);
         setInterval(() => this.reduceBuffer(), this.reduceBufferInterval);
         setInterval(() => this.tryLastPacket(), this.connectionCheckInterval);
-
+        this.start();
     }
 
     //registers all the event handlers for when this stream is closed - or when data arrives.
@@ -29,14 +29,16 @@ export default class WebAudio {
     socketDisconnected(e) {
         console.log("Audio failed: " + e)
         this.mediaSource = null;
+        this.start();
     }
 
     //starts the web audio stream. only call this method on button click.
     start() {
         if (!!this.audio) this.audio.remove();
         this.queue = null;
+        this.buffer = null;
 
-        if (!this.mediaSource) {
+        //if (!this.mediaSource) {
             this.audio = document.createElement('audio');
             
             this.audio.autoplay = true;
@@ -44,10 +46,8 @@ export default class WebAudio {
             this.audio.src = window.URL.createObjectURL(this.mediaSource);
             this.mediaSource.addEventListener('sourceopen', e => this.onSourceOpen())
             //first we need a media source - and an audio object that contains it.
-            
 
-
-        }
+        //}
 
         //start our stream - we can only do this on user input
         this.audio.play().then(function() {
@@ -105,6 +105,7 @@ export default class WebAudio {
             
         } else {
             console.log('AudioElement Error: ' + this.audio.error);
+            this.start();
         }
     }
 

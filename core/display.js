@@ -646,7 +646,7 @@ export default class Display {
             //how many times has _pushAsyncFrame been called when the frame had all rects but has not been drawn
             this._asyncFrameQueue[0][5] += 1;
             //force the frame to be drawn if it has been here too long
-            if (this._asyncFrameQueue[0][5] > 10) { 
+            if (this._asyncFrameQueue[0][5] > 5) { 
                 this._pushAsyncFrame(true);
             }
         }

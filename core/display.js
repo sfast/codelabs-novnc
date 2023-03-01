@@ -25,6 +25,7 @@ export default class Display {
             2 - Array of Rect objects
             3 - bool, is the frame complete
             4 - int, index of current rect (post-processing)
+            5 - int, number of times requestAnimationFrame called _pushAsyncFrame and the frame had all rects, however, the frame was not marked complete
         */
         this._asyncFrameQueue = [];
         this._maxAsyncFrameQueue = 3;
@@ -529,7 +530,7 @@ export default class Display {
                 //frame is newer than any frame in the queue, drop old frames
                 this._asyncFrameQueue.shift();
                 let rect_cnt = ((rect.type == "flip") ? rect.rect_cnt : 0);
-                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ], (rect_cnt == 1), 0 ]);
+                this._asyncFrameQueue.push([ rect.frame_id, rect_cnt, [ rect ], (rect_cnt == 1), 0, 0 ]);
                 this._droppedFrames++;
             }
         }
@@ -544,7 +545,7 @@ export default class Display {
 
         this._asyncFrameQueue = [];
         for (let i=0; i<this._maxAsyncFrameQueue; i++) {
-            this._asyncFrameQueue.push([ 0, 0, [], false, 0 ])
+            this._asyncFrameQueue.push([ 0, 0, [], false, 0, 0 ])
         }
     }
 
@@ -592,10 +593,10 @@ export default class Display {
     Push the oldest frame in the buffer to the canvas if it is marked ready
     */
     _pushAsyncFrame(force=false) {
-        if (this._asyncFrameQueue[0][3]) {
+        if (this._asyncFrameQueue[0][3] || force) {
             let frame = this._asyncFrameQueue.shift()[2];
             if (this._asyncFrameQueue.length < this._maxAsyncFrameQueue) {
-                this._asyncFrameQueue.push([ 0, 0, [], false, 0 ]);
+                this._asyncFrameQueue.push([ 0, 0, [], false, 0, 0 ]);
             }
 
             let transparent_rects = [];
@@ -640,6 +641,13 @@ export default class Display {
             if (this._flushing) {
                 this._flushing = false;
                 this.onflush();
+            }
+        } else if (this._asyncFrameQueue[0][1] > 0 && this._asyncFrameQueue[0][1] == this._asyncFrameQueue[0][2].length) {
+            //how many times has _pushAsyncFrame been called when the frame had all rects but has not been drawn
+            this._asyncFrameQueue[0][5] += 1;
+            //force the frame to be drawn if it has been here too long
+            if (this._asyncFrameQueue[0][5] > 10) { 
+                this._pushAsyncFrame(true);
             }
         }
 

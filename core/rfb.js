@@ -866,22 +866,24 @@ export default class RFB extends EventTargetMixin {
         this._keyboard.blur();
     }
 
-    checkLocalClipboard() {
+    async checkLocalClipboard() {
         if (this.clipboardUp && this.clipboardSeamless) {
 
             if (this.clipboardBinary) {
-                navigator.clipboard.read().then((data) => {
+                try {
+                    let data = await navigator.clipboard.read();
                     this.clipboardPasteDataFrom(data);
-                }, (err) => {
+                } catch (err) {
                     Log.Debug("No data in clipboard: " + err);
-                }); 
+                } 
             } else {
                 if (navigator.clipboard && navigator.clipboard.readText) {
-                    navigator.clipboard.readText().then(function (text) {
+                    try {
+                        let text = await navigator.clipboard.readText();
                         this.clipboardPasteFrom(text);
-                    }.bind(this)).catch(function () {
-                      return Log.Debug("Failed to read system clipboard");
-                    });
+                    } catch (err) {
+                        return Log.Debug("Failed to read system clipboard");
+                    }  
                 }
             }
         }

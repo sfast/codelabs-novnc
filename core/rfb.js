@@ -1570,11 +1570,6 @@ export default class RFB extends EventTargetMixin {
 
     _handleKeyEvent(keysym, code, down) {
         this.sendKey(keysym, code, down);
-
-        if (this._resendClipboardNextUserDrivenEvent) {
-            this.checkLocalClipboard();
-        }
-
     }
 
     _handleMouse(ev) {

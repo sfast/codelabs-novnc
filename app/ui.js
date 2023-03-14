@@ -135,6 +135,8 @@ const UI = {
             .addEventListener('click', UI.hideStatus);
         UI.openControlbar();
 
+        // 
+
         UI.updateVisualState('init');
 
         document.documentElement.classList.remove("noVNC_loading");
@@ -196,6 +198,19 @@ const UI = {
         // Settings with immediate effects
         UI.initSetting('logging', 'warn');
         UI.updateLogging();
+
+        // Stream Quality Presets
+        let qualityDropdown = document.getElementById("noVNC_setting_video_quality");
+        let supportsSharedArrayBuffers = typeof SharedArrayBuffer !== "undefined";
+        qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:0,label:"Static"}))
+        qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:1,label:"Low"}))
+        qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:2,label:"Medium"}))
+        qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:3,label:"High"}))
+        qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:4,label:"Extreme"}))
+        if (supportsSharedArrayBuffers) {
+            qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:5,label:"Lossless"}))
+        }
+        qualityDropdown.appendChild(Object.assign(document.createElement("option"),{value:10,label:"Custom"}))
 
         // if port == 80 (or 443) then it won't be present and should be
         // set manually
@@ -2525,18 +2540,6 @@ if (l10n.language === "en" || l10n.dictionary !== undefined) {
         .then((translations) => { l10n.dictionary = translations; })
         .catch(err => Log.Error("Failed to load translations: " + err))
         .then(UI.prime);
-}
-
-// Do not show lossless option if not supported
-let supportsSharedArrayBuffers = typeof SharedArrayBuffer !== "undefined";
-let lossless = Object.assign(document.createElement("option"),{value:5,label:"Lossless"});
-let custom = Object.assign(document.createElement("option"),{value:10,label:"Custom"})
-let select = document.getElementById("noVNC_setting_video_quality");
-if (supportsSharedArrayBuffers) {
-    select.appendChild(lossless);
-    select.appendChild(custom);
-} else {
-    select.appendChild(custom);
 }
 
 export default UI;

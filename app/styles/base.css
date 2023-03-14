@@ -910,6 +910,9 @@ select:active {
   line-height:90%;
   text-shadow: 0.1em 0.1em 0 black;
   margin-bottom: 0px;
+  background: white;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 .noVNC_logo img {
   width: 45%

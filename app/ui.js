@@ -2527,4 +2527,16 @@ if (l10n.language === "en" || l10n.dictionary !== undefined) {
         .then(UI.prime);
 }
 
+// Do not show lossless option if not supported
+let supportsSharedArrayBuffers = typeof SharedArrayBuffer !== "undefined";
+let lossless = Object.assign(document.createElement("option"),{value:5,label:"Lossless"});
+let custom = Object.assign(document.createElement("option"),{value:10,label:"Custom"})
+let select = document.getElementById("noVNC_setting_video_quality");
+if (supportsSharedArrayBuffers) {
+    select.appendChild(lossless);
+    select.appendChild(custom);
+} else {
+    select.appendChild(custom);
+}
+
 export default UI;

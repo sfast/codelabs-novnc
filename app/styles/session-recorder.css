@@ -1,0 +1,15 @@
+#kasm_recording_frame {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  z-index: 100000;
+  display: none;
+  border: 2px red dashed;
+  pointer-events: none;
+}
+
+#kasm_recording_frame.is-visible {
+  display: inline-block;
+}

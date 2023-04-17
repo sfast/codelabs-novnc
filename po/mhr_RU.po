@@ -1,0 +1,354 @@
+
+msgid "Connecting..."
+msgstr "
+
+msgid "Disconnecting..."
+msgstr "
+
+msgid "Reconnecting..."
+msgstr "
+
+msgid "Internal error"
+msgstr "
+
+msgid "Must set host"
+msgstr "
+
+msgid "Connected (encrypted) to "
+msgstr "
+
+msgid "Connected (unencrypted) to "
+msgstr "
+
+msgid "Something went wrong, connection is closed"
+msgstr "
+
+msgid "Failed to connect to server"
+msgstr "
+
+msgid "Disconnected"
+msgstr "
+
+msgid "New connection has been rejected with reason: "
+msgstr "
+
+msgid "New connection has been rejected"
+msgstr "
+
+msgid "Credentials are required"
+msgstr "
+
+msgid "noVNC encountered an error:"
+msgstr "
+
+msgid "Hide/Show the control bar"
+msgstr "
+
+msgid "Drag"
+msgstr "
+
+msgid "Move/Drag Viewport"
+msgstr "
+
+msgid "Keyboard"
+msgstr "
+
+msgid "Show Keyboard"
+msgstr "
+
+msgid "Extra keys"
+msgstr "
+
+msgid "Show Extra Keys"
+msgstr "
+
+msgid "Ctrl"
+msgstr "
+
+msgid "Toggle Ctrl"
+msgstr "
+
+msgid "Alt"
+msgstr "
+
+msgid "Toggle Alt"
+msgstr "
+
+msgid "Toggle Windows"
+msgstr "
+
+msgid "Windows"
+msgstr "
+
+msgid "Send Tab"
+msgstr "
+
+msgid "Tab"
+msgstr "
+
+msgid "Esc"
+msgstr "
+
+msgid "Send Escape"
+msgstr "
+
+msgid "Ctrl+Alt+Del"
+msgstr "
+
+msgid "Send Ctrl-Alt-Del"
+msgstr "
+
+msgid "Shutdown/Reboot"
+msgstr "
+
+msgid "Shutdown/Reboot..."
+msgstr "
+
+msgid "Power"
+msgstr "
+
+msgid "Shutdown"
+msgstr "
+
+msgid "Reboot"
+msgstr "
+
+msgid "Reset"
+msgstr "
+
+msgid "Clipboard"
+msgstr "
+
+msgid "Clear"
+msgstr "
+
+msgid "Fullscreen"
+msgstr "
+
+msgid "Settings"
+msgstr "
+
+msgid "Shared Mode"
+msgstr "
+
+msgid "View Only"
+msgstr "
+
+msgid "Clip to Window"
+msgstr "
+
+msgid "Scaling Mode:"
+msgstr "
+
+msgid "None"
+msgstr "
+
+msgid "Local Scaling"
+msgstr "
+
+msgid "Remote Resizing"
+msgstr "
+
+msgid "Advanced"
+msgstr "
+
+msgid "Quality:"
+msgstr "
+
+msgid "Compression level:"
+msgstr "
+
+msgid "Repeater ID:"
+msgstr "
+
+msgid "WebSocket"
+msgstr "
+
+msgid "Encrypt"
+msgstr "
+
+msgid "Host:"
+msgstr "
+
+msgid "Port:"
+msgstr "
+
+msgid "Path:"
+msgstr "
+
+msgid "Automatic Reconnect"
+msgstr "
+
+msgid "Reconnect Delay (ms):"
+msgstr "
+
+msgid "Show Dot when No Cursor"
+msgstr "
+
+msgid "Logging:"
+msgstr "
+
+msgid "Version:"
+msgstr "
+
+msgid "Disconnect"
+msgstr "
+
+msgid "Connect"
+msgstr "
+
+msgid "Username:"
+msgstr "
+
+msgid "Password:"
+msgstr "
+
+msgid "Send Credentials"
+msgstr "
+
+msgid "Cancel"
+msgstr "
+
+msgid "Keys"
+msgstr "
+
+msgid "Game Cursor Mode"
+msgstr "
+
+msgid "Press Esc Key to Exit Pointer Lock Mode"
+msgstr "
+
+msgid "Game Mode paused, click on screen to resume Game Mode."
+msgstr "
+
+msgid "Clipboard Up"
+msgstr "
+
+msgid "CLipboard Down"
+msgstr "
+
+msgid "Clipboard Seamless"
+msgstr "
+
+msgid "Prefer Local Cursor"
+msgstr "
+
+msgid "Translate keyboard shortcuts"
+msgstr "
+
+msgid "Enable WebRTC UDP Transit"
+msgstr "
+
+msgid "Enable WebP Compression"
+msgstr "
+
+msgid "Enable Performance Stats"
+msgstr "
+
+msgid "Enable Pointer Lock"
+msgstr "
+
+msgid "IME Input Mode"
+msgstr "
+
+msgid "Show Virtual Keyboard Control"
+msgstr "
+
+msgid "Toggle Control Panel via Keystrokes"
+msgstr "
+
+msgid "Render Native Resolution"
+msgstr "
+
+msgid "Keyboard Shortcuts"
+msgstr "
+
+msgid "Enable KasmVNC Keyboard Shortcuts"
+msgstr "
+
+msgid "1 - Toggle Control Panel"
+msgstr "
+
+msgid "2 - Toggle Game Pointer Mode"
+msgstr "
+
+msgid "3 - Toggle Pointer Lock"
+msgstr "
+
+msgid "Stream Quality"
+msgstr "
+
+msgid "Preset Modes:"
+msgstr "
+
+msgid "Static"
+msgstr "
+
+msgid "Low"
+msgstr "
+
+msgid "Medium"
+msgstr "
+
+msgid "High"
+msgstr "
+
+msgid "Extreme"
+msgstr "
+
+msgid "Lossless"
+msgstr "
+
+msgid "Custom"
+msgstr "
+
+msgid "Anti-Aliasing:"
+msgstr "
+
+msgid "Auto Dynamic"
+msgstr "
+
+msgid "Off"
+msgstr "
+
+msgid "On"
+msgstr "
+
+msgid "Dynamic Quality Min:"
+msgstr "
+
+msgid "Dynamic Quality Max:"
+msgstr "
+
+msgid "Treat Lossless:"
+msgstr "
+
+msgid "Frame Rate:"
+msgstr "
+
+msgid "Video JPEG Quality:"
+msgstr "
+
+msgid "Video WEBP Quality:"
+msgstr "
+
+msgid "Video Area:"
+msgstr "
+
+msgid "Video Time:"
+msgstr "
+
+msgid "Video Out Time:"
+msgstr "
+
+msgid "Video Mode Width:"
+msgstr "
+
+msgid "Video Mode Height:"
+msgstr "
+
+msgid "Documentation"
+msgstr "
+
+msgid "Drag Viewport"
+msgstr "

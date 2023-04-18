@@ -66,13 +66,13 @@ msgid "Ctrl"
 msgstr "Ctrl"
 
 msgid "Toggle Ctrl"
-msgstr "Ctrl" tugmachasini o'zgartirish"
+msgstr "Ctrl tugmachasini o'zgartirish"
 
 msgid "Alt"
 msgstr "Alt"
 
 msgid "Toggle Alt"
-msgstr "Alt" tugmachasini o'zgartirish"
+msgstr "Alt tugmachasini o'zgartirish"
 
 msgid "Toggle Windows"
 msgstr "Windows-ni almashtirish"

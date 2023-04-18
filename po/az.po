@@ -72,7 +72,7 @@ msgid "Alt"
 msgstr "Alt"
 
 msgid "Toggle Alt"
-msgstr "Alt" düyməsini dəyişdirin"
+msgstr "Alt düyməsini dəyişdirin"
 
 msgid "Toggle Windows"
 msgstr "Windows-u dəyişdirin"

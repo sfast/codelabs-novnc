@@ -1,12 +1,12 @@
 
 msgid "Connecting..."
-msgstr "...ﻞﻴﺻﻮﺗ"
+msgstr ".ﻞﻴﺻﻮﺗ"
 
 msgid "Disconnecting..."
-msgstr "... ﻝﺎﺼﺗﻻ﻿ﺍ ﻊﻄﻗ"
+msgstr ". ﻝﺎﺼﺗﻻ﻿ﺍ ﻊﻄﻗ"
 
 msgid "Reconnecting..."
-msgstr "... ﻝﺎﺼﺗﻻ﻿ﺍ ﺓﺩﺎﻋﺇ"
+msgstr ". ﻝﺎﺼﺗﻻ﻿ﺍ ﺓﺩﺎﻋﺇ"
 
 msgid "Internal error"
 msgstr "ﻲﻠﺧﺍﺩ ﺄﻄﺧ"
@@ -102,7 +102,7 @@ msgid "Shutdown/Reboot"
 msgstr "ﻞﻴﻐﺸﺘﻟﺍ ﺓﺩﺎﻋﺇ / ﻞﻴﻐﺸﺘﻟﺍ ﻑﺎﻘﻳﺇ"
 
 msgid "Shutdown/Reboot..."
-msgstr "... ﻞﻴﻐﺸﺘﻟﺍ ﺓﺩﺎﻋﺇ / ﻞﻴﻐﺸﺘﻟﺍ ﻑﺎﻘﻳﺇ"
+msgstr ". ﻞﻴﻐﺸﺘﻟﺍ ﺓﺩﺎﻋﺇ / ﻞﻴﻐﺸﺘﻟﺍ ﻑﺎﻘﻳﺇ"
 
 msgid "Power"
 msgstr "ﺓﻮﻗ"
@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "ﺮﺷﺆﻤﻟﺍ ﻞﻔﻗ ﻊﺿﻭ ﻦﻣ ﺝﻭﺮﺨﻠﻟ Esc ﺡﺎﺘﻔﻣ ﻰﻠﻋ ﻂﻐﺿﺍ"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr ".ﺔﺒﻌﻠﻟﺍ ﻊﺿﻭ ﻑﺎﻨﺌﺘﺳﻻ﻿ ﺔﺷﺎﺸﻟﺍ ﻰﻠﻋ ﺮﻘﻧﺍ ، ﺎﺘًﻗﺆﻣ ﺔﺒﻌﻠﻟﺍ ﻊﺿﻭ ﻒﻗﻮﺗ"
+msgstr "ﺔﺒﻌﻠﻟﺍ ﻊﺿﻭ ﻑﺎﻨﺌﺘﺳﻻ﻿ ﺔﺷﺎﺸﻟﺍ ﻰﻠﻋ ﺮﻘﻧﺍ ، ﺎﺘًﻗﺆﻣ ﺔﺒﻌﻠﻟﺍ ﻊﺿﻭ ﻒﻗﻮﺗ"
 
 msgid "Clipboard Up"
 msgstr "ﺔﻈﻓﺎﺤﻟﺍ"

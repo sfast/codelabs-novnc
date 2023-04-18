@@ -1,12 +1,12 @@
 
 msgid "Connecting..."
-msgstr "...רשֵׁקַמְ"
+msgstr ".רשֵׁקַמְ"
 
 msgid "Disconnecting..."
-msgstr "...קתנתמ"
+msgstr ".קתנתמ"
 
 msgid "Reconnecting..."
-msgstr "...שדחמ רבחתמ"
+msgstr ".שדחמ רבחתמ"
 
 msgid "Internal error"
 msgstr "תימינפ האיגש"
@@ -102,7 +102,7 @@ msgid "Shutdown/Reboot"
 msgstr "שדחמ לוחתא/יוביכ"
 
 msgid "Shutdown/Reboot..."
-msgstr "...לוחתא/יוביכ"
+msgstr ".לוחתא/יוביכ"
 
 msgid "Power"
 msgstr "חַוֹכּ"
@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "עיבצמ תליענ בצממ תאצל ידכ Esc שקמ לע ץחל"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr ".קחשמ בצמ תא שדחל ידכ ךסמה לע ץחל ,ההשומ קחשמ בצמ"
+msgstr "קחשמ בצמ תא שדחל ידכ ךסמה לע ץחל ,ההשומ קחשמ בצמ"
 
 msgid "Clipboard Up"
 msgstr "הלעמל חול"

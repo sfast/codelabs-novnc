@@ -1,12 +1,12 @@
 
 msgid "Connecting..."
-msgstr "... ןדניבראַפ"
+msgstr ". ןדניבראַפ"
 
 msgid "Disconnecting..."
-msgstr "... גניטקענאַקסיד"
+msgstr ". גניטקענאַקסיד"
 
 msgid "Reconnecting..."
-msgstr "... גניטקענאַקיר"
+msgstr ". גניטקענאַקיר"
 
 msgid "Internal error"
 msgstr "תועט ךעלרעני"
@@ -102,7 +102,7 @@ msgid "Shutdown/Reboot"
 msgstr "טאָאָבער / ןואַדטאַש"
 
 msgid "Shutdown/Reboot..."
-msgstr "... טאָאָבער / ןואַדטאַש"
+msgstr ". טאָאָבער / ןואַדטאַש"
 
 msgid "Power"
 msgstr "טפאַרק"
@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "עדאָמ קאַל רעטניופּ יד גנאַגסיוראַ וצ Esc Key ןקירד"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr ".עדאָמ ליפּש רעדיוו כיז נעמענ וצ ןלעטשראַפ ףיוא טיג ,דזאָפּ עדאָמ ליפּש"
+msgstr "עדאָמ ליפּש רעדיוו כיז נעמענ וצ ןלעטשראַפ ףיוא טיג ,דזאָפּ עדאָמ ליפּש"
 
 msgid "Clipboard Up"
 msgstr "ףיוראַ דראָבפּילק"

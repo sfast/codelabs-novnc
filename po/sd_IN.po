@@ -1,12 +1,12 @@
 
 msgid "Connecting..."
-msgstr "...ﻱﺪﻨﻳﮃﻨﮘ"
+msgstr ".ﻱﺪﻨﻳﮃﻨﮘ"
 
 msgid "Disconnecting..."
-msgstr "... ﻲﻫﺁ ﻮﻴﻫﺭ ﻲﭤ ﻊﻄﻘﻨﻣ"
+msgstr ". ﻲﻫﺁ ﻮﻴﻫﺭ ﻲﭤ ﻊﻄﻘﻨﻣ"
 
 msgid "Reconnecting..."
-msgstr "... ﻲﻫﺁ ﻮﻴﻫﺭ ﻱﮃﻨﮘ ﺮﻬﻴﭔ"
+msgstr ". ﻲﻫﺁ ﻮﻴﻫﺭ ﻱﮃﻨﮘ ﺮﻬﻴﭔ"
 
 msgid "Internal error"
 msgstr "ﻲﻄﻠﻏ ﻲﻧﻭﺭﺪﻧﺍ"
@@ -102,7 +102,7 @@ msgid "Shutdown/Reboot"
 msgstr "ٽﻮﺒﻳﺭ / ﺪﻨﺑ"
 
 msgid "Shutdown/Reboot..."
-msgstr "... ٽﻮﺒﻳﺭ / ﺪﻨﺑ"
+msgstr ". ٽﻮﺒﻳﺭ / ﺪﻨﺑ"
 
 msgid "Power"
 msgstr "ﺖﻗﺎﻃ"
@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "ﻮﻳﺎﭔﺩ ﻲﮐ ﻲﺌﻴڪ Esc ءِﻻ﻿ ﮠﺮڪﻧ ﻥﺎﻣ ڊﻮﻣ ڪﻻ﻿ ﺮٽﻨﺋﺎﭘ"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr ".ﻮﻳﺮڪ ڪﻠڪ ﻲﺗ ﻦﻳﺮڪﺳﺍ ءﻻ﻿ ﮠﺮڪ ﻉﻭﺮﺷ ﺮﻬﻴﭔ ﻲﮐ ڊﻮﻣ ﺪﻧﺍﺭ ،ﻮﻳﻭ ﻮﻴڪﻭﺭ ڊﻮﻣ ﺪﻧﺍﺭ"
+msgstr "ﻮﻳﺮڪ ڪﻠڪ ﻲﺗ ﻦﻳﺮڪﺳﺍ ءﻻ﻿ ﮠﺮڪ ﻉﻭﺮﺷ ﺮﻬﻴﭔ ﻲﮐ ڊﻮﻣ ﺪﻧﺍﺭ ،ﻮﻳﻭ ﻮﻴڪﻭﺭ ڊﻮﻣ ﺪﻧﺍﺭ"
 
 msgid "Clipboard Up"
 msgstr "ﻲﭥﻣ ڊﺭﻮﺑ ﭗﻠڪ"

@@ -155,8 +155,6 @@ lv lv
 lv_LV lv
 mg mg
 mg_MG mg
-mhr mhr
-mhr_RU mhr
 mi mi
 mi_NZ mi
 mk mk
@@ -248,8 +246,6 @@ yi_US yi
 yi yi
 yo_NG yo
 yo yo
-yue_HK yue
-yue yue
 zh_CN zh-CN
 zh_TW zh-TW
 zu_ZA zu
@@ -288,6 +284,7 @@ for LINKING in $LANGS; do
   sed -i '/^msgstr / s/《//g' $FILE
   # Quotation issues
   sed -i '/^msgstr / s/"://g' $FILE
+  sed -i '/^msgstr / s/"\.//g' $FILE
   # Left indentation
   sed -i '/^msgstr / s/    */ /g' $FILE
   # Unk Characters

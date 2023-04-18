@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "Sakatu Esc tekla erakuslea blokeatzeko modua irteteko"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr "Joko modua pausatu da, egin klik pantailan Joko modua berriro hasteko"."
+msgstr "Joko modua pausatu da, egin klik pantailan Joko modua berriro hasteko"
 
 msgid "Clipboard Up"
 msgstr "Arbela gora"

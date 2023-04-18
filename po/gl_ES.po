@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "Preme a tecla Esc para saír do modo de bloqueo do punteiro"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr "Modo de xogo en pausa, fai clic na pantalla para retomar o modo de xogo"."
+msgstr "Modo de xogo en pausa, fai clic na pantalla para retomar o modo de xogo"
 
 msgid "Clipboard Up"
 msgstr "Portapapeis arriba"

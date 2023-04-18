@@ -1,12 +1,12 @@
 
 msgid "Connecting..."
-msgstr "...ﻁﺎﺒﺗﺭﺍ ﯼﺭﺍﺮﻗﺮﺑ"
+msgstr ".ﻁﺎﺒﺗﺭﺍ ﯼﺭﺍﺮﻗﺮﺑ"
 
 msgid "Disconnecting..."
-msgstr "...ﻁﺎﺒﺗﺭﺍ ﻊﻄﻗ"
+msgstr ".ﻁﺎﺒﺗﺭﺍ ﻊﻄﻗ"
 
 msgid "Reconnecting..."
-msgstr "...ﺩﺪﺠﻣ ﻞﺻﻭ"
+msgstr ".ﺩﺪﺠﻣ ﻞﺻﻭ"
 
 msgid "Internal error"
 msgstr "ﯽﻠﺧﺍﺩ ﯼﺎﻄﺧ"
@@ -102,7 +102,7 @@ msgid "Shutdown/Reboot"
 msgstr "ﺩﺪﺠﻣ ﯼﺯﺍﺪﻧﺍ ﻩﺍﺭ/ﻥﺩﺮﮐ ﺵﻮﻣﺎﺧ"
 
 msgid "Shutdown/Reboot..."
-msgstr "...ﺩﺪﺠﻣ ﯼﺯﺍﺪﻧﺍ ﻩﺍﺭ/ﻥﺩﺮﮐ ﺵﻮﻣﺎﺧ"
+msgstr ".ﺩﺪﺠﻣ ﯼﺯﺍﺪﻧﺍ ﻩﺍﺭ/ﻥﺩﺮﮐ ﺵﻮﻣﺎﺧ"
 
 msgid "Power"
 msgstr "ﺕﺭﺪﻗ"
@@ -219,7 +219,7 @@ msgid "Press Esc Key to Exit Pointer Lock Mode"
 msgstr "ﺪﯿﻫﺩ ﺭﺎﺸﻓ ﺮﮔ ﻩﺭﺎﺷﺍ ﻞﻔﻗ ﺖﻟﺎﺣ ﺯﺍ ﺝﻭﺮﺧ ﯼﺍﺮﺑ ﺍﺭ Esc ﺪﯿﻠﮐ"
 
 msgid "Game Mode paused, click on screen to resume Game Mode."
-msgstr ".ﺪﯿﻨﮐ ﮏﯿﻠﮐ ﻪﺤﻔﺻ ﯼﻭﺭ ﯼﺯﺎﺑ ﺖﻟﺎﺣ ﯼﺮﯿﮔﺮﺳ ﺯﺍ ﯼﺍﺮﺑ ،ﺪﺷ ﻒﻗﻮﺘﻣ ﯼﺯﺎﺑ ﺖﻟﺎﺣ"
+msgstr "ﺪﯿﻨﮐ ﮏﯿﻠﮐ ﻪﺤﻔﺻ ﯼﻭﺭ ﯼﺯﺎﺑ ﺖﻟﺎﺣ ﯼﺮﯿﮔﺮﺳ ﺯﺍ ﯼﺍﺮﺑ ،ﺪﺷ ﻒﻗﻮﺘﻣ ﯼﺯﺎﺑ ﺖﻟﺎﺣ"
 
 msgid "Clipboard Up"
 msgstr "ﺩﺭﻮﺑ ﭗﯿﻠﮐ ﻻ﻿ﺎﺑ"

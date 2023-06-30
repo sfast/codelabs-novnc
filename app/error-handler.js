@@ -32,6 +32,7 @@
                 return false;
             }
 
+            return location.reload();
             let div = document.createElement("div");
             div.classList.add('noVNC_message');
             div.appendChild(document.createTextNode(event.message));
